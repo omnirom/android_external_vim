@@ -136,6 +136,10 @@ LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 LOCAL_REQUIRED_MODULES := vimrc
 include $(BUILD_EXECUTABLE)
 
+# Create vi symlink
+$(shell mkdir -p $(TARGET_OUT_OPTIONAL_EXECUTABLES))
+$(shell pushd $(TARGET_OUT_OPTIONAL_EXECUTABLES) > /dev/null && ln -sf vim vi && popd > /dev/null)
+
 # ========================================================
 # vim runtime files
 # ========================================================
