@@ -197,7 +197,7 @@ vim_autoload_files := \
 
 VIM_SHARED := $(TARGET_OUT)/usr/share/vim
 
-RUNTIME_FILES := \
+vim_runtime_files := \
   $(vim_runtime_files) \
   $(addprefix doc/, $(vim_doc_files)) \
   $(addprefix colors/, $(vim_colors_files)) \
@@ -205,14 +205,15 @@ RUNTIME_FILES := \
   $(addprefix plugin/, $(vim_plugin_files)) \
   $(addprefix autoload/, $(vim_autoload_files)) \
 
-$(VIM_SHARED): $(ACP)
-	@echo "Install vim runtime files" 
-	@mkdir -p $@
-	@$(foreach RUNTIME_FILE,$(RUNTIME_FILES), \
-		mkdir -p $@/$(dir $(RUNTIME_FILE)); \
-		$(ACP) $(vim_runtime_path)/$(RUNTIME_FILE) $@/$(RUNTIME_FILE); \
-	)
+$(vim_runtime_files): $(LOCAL_BUILT_MODULE)
+	@echo "Install: $(VIM_SHARED)/$@"
+	@mkdir -p $(dir $(VIM_SHARED)/$@)
+	$(hide) cp $(vim_runtime_path)/$@ $(VIM_SHARED)/$@
 
-ALL_DEFAULT_INSTALLED_MODULES += $(VIM_SHARED)
+ALL_DEFAULT_INSTALLED_MODULES += $(vim_runtime_files)
+
+ALL_MODULES.$(LOCAL_MODULE).INSTALLED := \
+  $(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) \
+  $(addprefix $(VIM_SHARED)/, $(vim_runtime_files))
 
 endif
