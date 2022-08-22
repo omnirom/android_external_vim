@@ -127,7 +127,7 @@ LOCAL_CFLAGS += \
 	-DFEAT_CMDL_INFO=1 \
 	-DFEAT_SEARCH_EXTRA=1
 
-LOCAL_CFLAGS += -Wno-unused-variable -Wno-unused-parameter
+LOCAL_CFLAGS += -Wno-unused-variable -Wno-unused-parameter -Wno-deprecated-declarations
 
 LOCAL_MODULE := vim
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
