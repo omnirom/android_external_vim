@@ -9,8 +9,8 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := vimrc
 LOCAL_MODULE_CLASS := ETC
-
 LOCAL_SRC_FILES := vimrc.android
+LOCAL_MODULE_PATH := $(TARGET_OUT_SYSTEM_EXT_ETC)
 
 include $(BUILD_PREBUILT)
 
@@ -101,7 +101,7 @@ LOCAL_SHARED_LIBRARIES += \
 
 LOCAL_CFLAGS += \
 	-DHAVE_CONFIG_H \
-	-DSYS_VIMRC_FILE=\"/system/etc/vimrc\"
+	-DSYS_VIMRC_FILE=\"$(TARGET_OUT_SYSTEM_EXT)/etc/vimrc\"
 
 # vim variants: TINY SMALL CM NORMAL BIG HUGE
 #
@@ -130,13 +130,13 @@ LOCAL_CFLAGS += \
 LOCAL_CFLAGS += -Wno-unused-variable -Wno-unused-parameter -Wno-deprecated-declarations
 
 LOCAL_MODULE := vim
-LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
+LOCAL_MODULE_PATH := $(TARGET_OUT_SYSTEM_EXT_EXECUTABLES)
 LOCAL_REQUIRED_MODULES := vimrc
 include $(BUILD_EXECUTABLE)
 
 # Create vi symlink
-$(shell mkdir -p $(TARGET_OUT_OPTIONAL_EXECUTABLES))
-$(shell pushd $(TARGET_OUT_OPTIONAL_EXECUTABLES) > /dev/null && ln -sf vim vi && popd > /dev/null)
+$(shell mkdir -p $(TARGET_OUT_SYSTEM_EXT_EXECUTABLES))
+$(shell pushd $(TARGET_OUT_SYSTEM_EXT_EXECUTABLES) > /dev/null && ln -sf vim vi && popd > /dev/null)
 
 # ========================================================
 # vim runtime files
@@ -195,7 +195,7 @@ vim_autoload_files := \
 	dist/ft.vim \
 	spacehi.vim
 
-VIM_SHARED := $(TARGET_OUT)/usr/share/vim
+VIM_SHARED := $(TARGET_OUT_SYSTEM_EXT)/usr/share/vim
 
 RUNTIME_FILES := \
   $(vim_runtime_files) \
