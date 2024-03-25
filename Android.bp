@@ -1,0 +1,168 @@
+prebuilt_etc {
+    name: "vimrc",
+    src: "vimrc.android",
+    system_ext_specific: true,
+}
+
+prebuilt_usr_share {
+    name: "vim-runtime-autoload-dist",
+    srcs: [
+        "runtime/autoload/dist/*",
+    ],
+    sub_dir: "vim/autoload/dist",
+    system_ext_specific: true,
+}
+
+prebuilt_usr_share {
+    name: "vim-runtime-autoload",
+    srcs: [
+        "runtime/autoload/spacehi.vim",
+    ],
+    sub_dir: "vim/autoload",
+    system_ext_specific: true,
+}
+
+prebuilt_usr_share {
+    name: "vim-runtime-colors",
+    srcs: [
+        "runtime/colors/*",
+    ],
+    sub_dir: "vim/colors",
+    system_ext_specific: true,
+}
+
+prebuilt_usr_share {
+    name: "vim-runtime-doc",
+    srcs: [
+        "runtime/doc/*",
+    ],
+    sub_dir: "vim/doc",
+    system_ext_specific: true,
+}
+
+prebuilt_usr_share {
+    name: "vim-runtime-plugin",
+    srcs: [
+        "runtime/plugin/matchparen.vim",
+    ],
+    sub_dir: "vim/plugin",
+    system_ext_specific: true,
+}
+
+prebuilt_usr_share {
+    name: "vim-runtime-syntax",
+    srcs: [
+        "runtime/syntax/*",
+    ],
+    sub_dir: "vim/syntax",
+    system_ext_specific: true,
+}
+
+prebuilt_usr_share {
+    name: "vim-runtime",
+    srcs: [
+        "runtime/defaults.vim",
+        "runtime/filetype.vim",
+        "runtime/ftoff.vim",
+        "runtime/indent.vim",
+        "runtime/indoff.vim",
+        "runtime/scripts.vim",
+    ],
+    sub_dir: "vim",
+    system_ext_specific: true,
+}
+
+cc_binary {
+    name: "vim",
+    srcs: [
+        "src/auto/pathdef.c",
+        "src/autocmd.c",
+        "src/blob.c",
+        "src/blowfish.c",
+        "src/buffer.c",
+        "src/change.c",
+        "src/channel.c",
+        "src/charset.c",
+        "src/debugger.c",
+        "src/dict.c",
+        "src/diff.c",
+        "src/digraph.c",
+        "src/edit.c",
+        "src/eval.c",
+        "src/evalfunc.c",
+        "src/ex_cmds.c",
+        "src/ex_cmds2.c",
+        "src/ex_docmd.c",
+        "src/ex_eval.c",
+        "src/ex_getln.c",
+        "src/fileio.c",
+        "src/findfile.c",
+        "src/fold.c",
+        "src/getchar.c",
+        "src/hardcopy.c",
+        "src/hashtab.c",
+        "src/if_cscope.c",
+        "src/if_xcmdsrv.c",
+        "src/indent.c",
+        "src/json.c",
+        "src/list.c",
+        "src/main.c",
+        "src/mark.c",
+        "src/mbyte.c",
+        "src/memfile.c",
+        "src/memline.c",
+        "src/menu.c",
+        "src/message.c",
+        "src/misc1.c",
+        "src/misc2.c",
+        "src/move.c",
+        "src/normal.c",
+        "src/ops.c",
+        "src/option.c",
+        "src/os_unix.c",
+        "src/popupmnu.c",
+        "src/popupwin.c",
+        "src/pty.c",
+        "src/quickfix.c",
+        "src/regexp.c",
+        "src/screen.c",
+        "src/search.c",
+        "src/sha256.c",
+        "src/spell.c",
+        "src/syntax.c",
+        "src/tag.c",
+        "src/term.c",
+        "src/textprop.c",
+        "src/ui.c",
+        "src/undo.c",
+        "src/usercmd.c",
+        "src/userfunc.c",
+        "src/version.c",
+        "src/window.c",
+    ],
+    cflags: [
+        "-DHAVE_CONFIG_H",
+        "-DSYS_VIMRC_FILE=\"/system_ext/etc/vimrc\"",
+    ],
+    local_include_dirs: [
+        "src/proto",
+        "src",
+    ],
+    shared_libs: [
+        "libselinux",
+        "libncurses",
+        "libm",
+        "libdl",
+    ],
+    required: [
+        "vimrc",
+        "vim-runtime-autoload-dist",
+        "vim-runtime-autoload",
+        "vim-runtime-colors",
+        "vim-runtime-doc",
+        "vim-runtime-plugin",
+        "vim-runtime-syntax",
+        "vim-runtime",
+    ],
+    system_ext_specific: true,
+}
