@@ -28,8 +28,14 @@
 /* Define when termcap.h defines outfuntype */
 /* #undef HAVE_OUTFUNTYPE */
 
+/* Define when del_curterm() is available */
+#define HAVE_DEL_CURTERM 1
+
 /* Define when __DATE__ " " __TIME__ can be used */
 /* #undef HAVE_DATE_TIME */
+
+/* Defined from $SOURCE_DATE_EPOCH, used as the build date */
+/* #undef BUILD_DATE */
 
 /* Define when __attribute__((unused)) can be used */
 #define HAVE_ATTRIBUTE_UNUSED 1
@@ -127,26 +133,17 @@
 /* #undef PTYRANGE0 */
 /* #undef PTYRANGE1 */
 
-/* Define mode for pty */
-/* #undef PTYMODE */
-
-/* Define group for pty */
-/* #undef PTYGROUP */
-
-/* Define as the return type of signal handlers (int or void).  */
-#define RETSIGTYPE void
-
-/* Define as the command at the end of signal handlers ("" or "return 0;").  */
-#define SIGRETURN return
-
 /* Define if struct sigcontext is present */
 #define HAVE_SIGCONTEXT 1
 
-/* Define if touuper/tolower only work on lower/upercase characters */
+/* Define if toupper/tolower only work on lower/uppercase characters */
 /* #undef BROKEN_TOUPPER */
 
 /* Define if stat() ignores a trailing slash */
 /* #undef STAT_IGNORES_SLASH */
+
+/* Define to nanoseconds field of struct stat */
+#define ST_MTIM_NSEC st_mtim.tv_nsec
 
 /* Define if tgetstr() has a second argument that is (char *) */
 /* #undef TGETSTR_CHAR_P */
@@ -161,7 +158,6 @@
 #define HAVE_FCHDIR 1
 #define HAVE_FCHOWN 1
 #define HAVE_FCHMOD 1
-#define HAVE_FLOAT_FUNCS 1
 #define HAVE_FSEEKO 1
 #define HAVE_FSYNC 1
 #define HAVE_FTRUNCATE 1
@@ -175,6 +171,7 @@
 #define HAVE_GETTIMEOFDAY 1
 /* #undef HAVE_GETWD */
 #define HAVE_ICONV 1
+#define HAVE_INET_NTOP 1
 #define HAVE_LOCALTIME_R 1
 #define HAVE_LSTAT 1
 #define HAVE_MEMSET 1
@@ -201,28 +198,36 @@
 /* #undef HAVE_SIGVEC */
 /* #undef HAVE_SMACK */
 #define HAVE_STRCASECMP 1
+#define HAVE_STRCOLL 1
 #define HAVE_STRERROR 1
 #define HAVE_STRFTIME 1
 /* #undef HAVE_STRICMP */
 #define HAVE_STRNCASECMP 1
 /* #undef HAVE_STRNICMP */
 #define HAVE_STRPBRK 1
+#define HAVE_STRPTIME 1
 #define HAVE_STRTOL 1
-#define HAVE_CANBERRA 1
+/* #undef HAVE_CANBERRA */
+/* #undef HAVE_SODIUM */
 #define HAVE_ST_BLKSIZE 1
+#define HAVE_SYNC 1
 #define HAVE_SYSCONF 1
 /* #undef HAVE_SYSCTL */
 #define HAVE_SYSINFO 1
 #define HAVE_SYSINFO_MEM_UNIT 1
+#define HAVE_SYSINFO_UPTIME 1
 #define HAVE_TGETENT 1
 #define HAVE_TOWLOWER 1
 #define HAVE_TOWUPPER 1
 #define HAVE_ISWUPPER 1
+#define HAVE_TZSET 1
 #define HAVE_UNSETENV 1
 #define HAVE_USLEEP 1
 #define HAVE_UTIME 1
-#define HAVE_BIND_TEXTDOMAIN_CODESET 1
 #define HAVE_MBLEN 1
+#define HAVE_TIMER_CREATE 1
+#define HAVE_CLOCK_GETTIME 1
+#define HAVE_XATTR 1
 
 /* Define, if needed, for accessing large files. */
 /* #undef _LARGE_FILES */
@@ -234,6 +239,7 @@
 
 /* Define if you have the header file: */
 #define HAVE_DIRENT_H 1
+/* #undef HAVE_DISPATCH_DISPATCH_H */
 #define HAVE_ERRNO_H 1
 #define HAVE_FCNTL_H 1
 /* #undef HAVE_FRAME_H */
@@ -242,7 +248,7 @@
 #define HAVE_LANGINFO_H 1
 /* #undef HAVE_LIBC_H */
 #define HAVE_LIBGEN_H 1
-#define HAVE_LIBINTL_H 1
+/* #undef HAVE_LIBINTL_H */
 #define HAVE_LOCALE_H 1
 #define HAVE_MATH_H 1
 /* #undef HAVE_NDIR_H */
@@ -250,7 +256,7 @@
 /* #undef HAVE_PTHREAD_NP_H */
 #define HAVE_PWD_H 1
 #define HAVE_SETJMP_H 1
-#define HAVE_SGTTY_H 1
+/* #undef HAVE_SGTTY_H */
 #define HAVE_STDINT_H 1
 #define HAVE_STRINGS_H 1
 /* #undef HAVE_STROPTS_H */
@@ -267,7 +273,7 @@
 #define HAVE_SYS_SELECT_H 1
 #define HAVE_SYS_STATFS_H 1
 /* #undef HAVE_SYS_STREAM_H */
-#define HAVE_SYS_SYSCTL_H 1
+/* #undef HAVE_SYS_SYSCTL_H */
 #define HAVE_SYS_SYSINFO_H 1
 /* #undef HAVE_SYS_SYSTEMINFO_H */
 #define HAVE_SYS_TIME_H 1
@@ -317,17 +323,11 @@
 /* Define if you want tiny features. */
 /* #undef FEAT_TINY */
 
-/* Define if you want small features. */
-/* #undef FEAT_SMALL */
-
 /* Define if you want normal features. */
 /* #undef FEAT_NORMAL */
 
-/* Define if you want big features. */
-/* #undef FEAT_BIG */
-
 /* Define if you want huge features. */
-/* #undef FEAT_HUGE */
+#define FEAT_HUGE 1
 
 /* Define if you want to include the Lua interpreter. */
 /* #undef FEAT_LUA */
@@ -356,6 +356,9 @@
 /* Define for linking via dlopen() or LoadLibrary() */
 /* #undef DYNAMIC_PYTHON3 */
 
+/* Define if compiled against Python 3 stable ABI / limited API */
+/* #undef DYNAMIC_PYTHON3_STABLE_ABI */
+
 /* Define if dynamic python does not require RTLD_GLOBAL */
 /* #undef PY_NO_RTLD_GLOBAL */
 
@@ -381,7 +384,7 @@
 /* #undef HAVE_AIX_ACL */
 
 /* Define if pango_shape_full() is available. */
-#define HAVE_PANGO_SHAPE_FULL 1
+/* #undef HAVE_PANGO_SHAPE_FULL */
 
 /* Define if you want to add support of GPM (Linux console mouse daemon) */
 /* #undef HAVE_GPM */
@@ -407,9 +410,6 @@
 /* Define if you want to include XIM support. */
 /* #undef FEAT_XIM */
 
-/* Define if you want to include Hangul input support. */
-/* #undef FEAT_HANGULIN */
-
 /* Define if you use GTK and want GNOME support. */
 /* #undef FEAT_GUI_GNOME */
 
@@ -423,7 +423,16 @@
 #define HAVE_DLFCN_H 1
 
 /* Define if there is a working gettext(). */
-#define HAVE_GETTEXT 1
+/* #undef HAVE_GETTEXT */
+
+/* Define if there is a working bind_textdomain_codeset(). */
+/* #undef HAVE_BIND_TEXTDOMAIN_CODESET */
+
+/* Define if there is a working dgettext(). */
+/* #undef HAVE_DGETTEXT */
+
+/* Define if there is a working dngettext(). */
+/* #undef HAVE_DNGETTEXT */
 
 /* Define if _nl_msg_cat_cntr is present. */
 /* #undef HAVE_NL_MSG_CAT_CNTR */
@@ -440,14 +449,17 @@
 /* Define if we have shl_load() */
 /* #undef HAVE_SHL_LOAD */
 
+/* Define if we can use IPv6 networking. */
+#define FEAT_IPV6 1
+
 /* Define if you want to include NetBeans integration. */
-/* #undef FEAT_NETBEANS_INTG */
+#define FEAT_NETBEANS_INTG 1
 
 /* Define if you want to include process communication. */
 #define FEAT_JOB_CHANNEL 1
 
 /* Define if you want to include terminal emulator support. */
-/* #undef FEAT_TERMINAL */
+#define FEAT_TERMINAL 1
 
 // Define default global runtime path.
 /* #undef RUNTIME_GLOBAL */
@@ -488,5 +500,17 @@
 /* Define if we have isnan() */
 #define HAVE_ISNAN 1
 
+/* Define if we have dirfd() */
+#define HAVE_DIRFD 1
+
+/* Define if we have flock() */
+#define HAVE_FLOCK 1
+
 /* Define to inline symbol or empty */
 /* #undef inline */
+
+/* Define if _SC_SIGSTKSZ is available via sysconf() */
+/* #undef HAVE_SYSCONF_SIGSTKSZ */
+
+/* Define if you want to load libgpm dynamically */
+/* #undef DYNAMIC_GPM */
