@@ -1,6 +1,5 @@
 " Tests for regexp with backslash and other special characters inside []
 " Also test backslash for hex/octal numbered character.
-"
 
 scriptencoding utf-8
 
@@ -19,7 +18,6 @@ function RunXTest(value, search_exp, expected)
   call assert_equal(a:expected, getline(1), printf("wrong result for %s", a:search_exp))
   quit!
 endfunction
-
 
 function Test_x_search()
   let res = "test text test text"
@@ -293,3 +291,5 @@ func Test_regex_char_classes()
   enew!
   close
 endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

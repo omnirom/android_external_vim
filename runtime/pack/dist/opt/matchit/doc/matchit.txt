@@ -4,7 +4,7 @@ For instructions on installing this file, type
 	`:help matchit-install`
 inside Vim.
 
-For Vim version 8.1.  Last change:  2019 May 05
+For Vim version 9.1.  Last change:  2024 May 20
 
 
 		  VIM REFERENCE MANUAL    by Benji Fisher et al
@@ -148,6 +148,9 @@ To use the matchit plugin add this line to your |vimrc|: >
 
 The script should start working the next time you start Vim.
 
+To use the matchit plugin after Vim has started, execute this command: >
+       packadd matchit
+
 (Earlier versions of the script did nothing unless a |buffer-variable| named
 |b:match_words| was defined.  Even earlier versions contained autocommands
 that set this variable for various file types.  Now, |b:match_words| is
@@ -168,6 +171,22 @@ not have |syntax| highlighting turned on, matchit.vim should work, but it may
 fail to skip matching groups in comments and strings.  If the |filetype|
 mechanism is turned off, the |b:match_words| variable will probably not be
 defined automatically.
+
+2.1 Temporarily disable the matchit plugin	*matchit-disable* *:MatchDisable*
+
+To temporarily disable the matchit plugin, after it hat been loaded,
+execute this command: >
+	:MatchDisable
+
+This will delete all the defined key mappings to the Vim default.
+Now the "%" command will work like before loading the plugin |%|
+
+2.2 Re-enable the matchit plugin		*:MatchEnable*
+
+To re-enable the plugin, after it was disabled, use the following command: >
+	:MatchEnable
+
+This will resetup the key mappings.
 
 ==============================================================================
 3. Configuration					*matchit-configure*
@@ -320,7 +339,7 @@ should work (and have the same effect as "foobar:barfoo:endfoobar"), although
 this has not been thoroughly tested.
 
 You can use |zero-width| patterns such as |\@<=| and |\zs|.  (The latter has
-not been thouroughly tested in matchit.vim.)  For example, if the keyword "if"
+not been thoroughly tested in matchit.vim.)  For example, if the keyword "if"
 must occur at the start of the line, with optional white space, you might use
 the pattern "\(^\s*\)\@<=if" so that the cursor will end on the "i" instead of
 at the start of the line.  For another example, if HTML had only one tag then
@@ -375,6 +394,10 @@ The back reference '\'.d refers to the same thing as '\'.b:match_table[d] in
 ==============================================================================
 5. Known Bugs and Limitations				*matchit-bugs*
 
+Repository: https://github.com/chrisbra/matchit/
+Bugs can be reported at the repository and the latest development snapshot can
+also be downloaded there.
+
 Just because I know about a bug does not mean that it is on my todo list.  I
 try to respond to reports of bugs that cause real problems.  If it does not
 cause serious problems, or if there is a work-around, a bug may sit there for
@@ -386,4 +409,4 @@ try to implement this in a future version.  (This is not so easy to arrange as
 you might think!)
 
 ==============================================================================
-vim:tw=78:fo=tcq2:ft=help:
+vim:tw=78:ts=8:fo=tcq2:ft=help:

@@ -1,6 +1,7 @@
 " Language:     Verilog HDL
 " Maintainer:	Chih-Tsun Huang <cthuang@cs.nthu.edu.tw>
 " Last Change:	2017 Aug 25 by Chih-Tsun Huang
+" 		2023 Aug 28 by Vim Project (undo_indent)
 " URL:		    http://www.cs.nthu.edu.tw/~cthuang/vim/indent/verilog.vim
 "
 " Credits:
@@ -27,6 +28,8 @@ setlocal indentkeys=!^F,o,O,0),=begin,=end,=join,=endcase
 setlocal indentkeys+==endmodule,=endfunction,=endtask,=endspecify
 setlocal indentkeys+==endconfig,=endgenerate,=endprimitive,=endtable
 setlocal indentkeys+==`else,=`elsif,=`endif
+
+let b:undo_indent = "setlocal indentexpr< indentkeys<"
 
 " Only define the function once.
 if exists("*GetVerilogIndent")
@@ -76,7 +79,7 @@ function GetVerilogIndent()
     let vverb = 0
   endif
 
-  " Indent accoding to last line
+  " Indent according to last line
   " End of multiple-line comment
   if last_line =~ '\*/\s*$' && last_line !~ '/\*.\{-}\*/'
     let ind = ind - offset_comment1
@@ -219,7 +222,7 @@ function GetVerilogIndent()
 
   endif
 
-  " Return the indention
+  " Return the indentation
   return ind
 endfunction
 

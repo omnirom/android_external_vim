@@ -3,7 +3,7 @@
 " Maintainer: Marshall Ward <marshall.ward@gmail.com>
 " Original Maintainer: Nikolai Weibull <now@bitwi.se>
 " Website: https://github.com/marshallward/vim-restructuredtext
-" Latest Revision: 2018-12-29
+" Latest Revision: 2020-03-31
 
 if exists("b:did_ftplugin")
     finish
@@ -28,13 +28,13 @@ setlocal formatoptions+=tcroql
 " directives (..) and ordered lists (1.), although it can cause problems for
 " many other cases.
 "
-" More sophisticated indentation rules should be revisted in the future.
+" More sophisticated indentation rules should be revisited in the future.
 
 if exists("g:rst_style") && g:rst_style != 0
     setlocal expandtab shiftwidth=3 softtabstop=3 tabstop=8
 endif
 
-if has('patch-7.3.867')  " Introduced the TextChanged event.
+if g:rst_fold_enabled != 0 && has('patch-7.3.867')  " Introduced the TextChanged event.
   setlocal foldmethod=expr
   setlocal foldexpr=RstFold#GetRstFold()
   setlocal foldtext=RstFold#GetRstFoldText()

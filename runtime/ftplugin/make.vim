@@ -1,7 +1,8 @@
 " Vim filetype plugin file
 " Language:	Make
-" Maintainer:	Bram Moolenaar <Bram@vim.org>
-" Last Change:	2019 Apr 02
+" Maintainer:	The Vim Project <https://github.com/vim/vim>
+" Last Change:	2023 Aug 10
+" Former Maintainer:	Bram Moolenaar <Bram@vim.org>
 
 " Only do this when not done yet for this buffer
 if exists("b:did_ftplugin")
@@ -9,10 +10,10 @@ if exists("b:did_ftplugin")
 endif
 let b:did_ftplugin = 1
 
-let b:undo_ftplugin = "setl et< sts< fo< com< cms< inc<"
+let b:undo_ftplugin = "setl et< sts< sw< fo< com< cms< inc<"
 
 " Make sure a hard tab is used, required for most make programs
-setlocal noexpandtab softtabstop=0
+setlocal noexpandtab softtabstop=0 shiftwidth=0
 
 " Set 'formatoptions' to break comment lines but not other lines,
 " and insert the comment leader when hitting <CR> or using "o".

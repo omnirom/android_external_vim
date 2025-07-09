@@ -1,4 +1,4 @@
-*vi_diff.txt*   For Vim version 8.1.  Last change: 2019 May 13
+*vi_diff.txt*   For Vim version 9.1.  Last change: 2025 Jun 10
 
 
 		  VIM REFERENCE MANUAL    by Bram Moolenaar
@@ -21,6 +21,7 @@ is missing something or because Posix is beside the mark).
 6. Supported Vi features		|vi-features|
 7. Command-line arguments		|cmdline-arguments|
 8. POSIX compliance			|posix-compliance|
+9. Supported Operating Systems		|os-support|
 
 ==============================================================================
 1. Simulated command					*simulated-command*
@@ -49,7 +50,7 @@ printed.
 
 autoprint (ap)		boolean	(default on)		*'autoprint'* *'ap'*
 beautify (bf)		boolean	(default off)		*'beautify'* *'bf'*
-flash (fl)		boolean	(default ??)		*'flash'* *'fl'*
+flash (fl)		boolean	(default on)		*'flash'* *'fl'*
 graphic (gr)		boolean	(default off)		*'graphic'* *'gr'*
 hardtabs (ht)		number	(default 8)		*'hardtabs'* *'ht'*
 	number of spaces that a <Tab> moves on the display
@@ -64,16 +65,17 @@ w300			number	(default 23)		*'w300'*
 w1200			number	(default 23)		*'w1200'*
 w9600			number	(default 23)		*'w9600'*
 
+Vi did not allow for changing the termcap entries, you would have to exit Vi,
+edit the termcap entry and try again.  Vim has the |terminal-options|.
+
 ==============================================================================
 3. Limits						*limits*
 
 Vim has only a few limits for the files that can be edited {Vi: can not handle
 <Nul> characters and characters above 128, has limited line length, many other
 limits}.
-							*E340*
-Maximum line length	   On machines with 16-bit ints (Amiga and MS-DOS real
-			   mode): 32767, otherwise 2147483647 characters.
-			   Longer lines are split.
+
+Maximum line length	   2147483647 characters.  Longer lines are split.
 Maximum number of lines	   2147483647 lines.
 Maximum file size	   2147483647 bytes (2 Gbyte) when a long integer is
 			   32 bits.  Much more for 64 bit longs.  Also limited
@@ -89,8 +91,11 @@ Maximum display width	   Unix and Win32: 1024 characters, otherwise 255
 Maximum lhs of a mapping   50 characters.
 Number of different highlighting types: over 30000
 Range of a Number variable:  -2147483648 to 2147483647 (might be more on 64
-			   bit systems)
+			   bit systems)  See also: |v:numbermax|,
+			   |v:numbermin| and |v:numbersize|
 Maximum length of a line in a tags file: 512 bytes.
+							*E1541*
+Maximum value for |/\U| and |/\%U|: 2147483647 (for 32bit integer).
 
 Information for undo and text in registers is kept in memory, thus when making
 (big) changes the amount of (virtual) memory available limits the number of
@@ -103,8 +108,7 @@ Memory usage limits
 The option 'maxmem' ('mm') is used to set the maximum memory used for one
 buffer (in kilobytes).  'maxmemtot' is used to set the maximum memory used for
 all buffers (in kilobytes).  The defaults depend on the system used.  For the
-Amiga and MS-DOS, 'maxmemtot' is set depending on the amount of memory
-available.
+Amiga, 'maxmemtot' is set depending on the amount of memory available.
 These are not hard limits, but tell Vim when to move text into a swap file.
 If you don't like Vim to swap to a file, set 'maxmem' and 'maxmemtot' to a
 very large value.  The swap file will then only be used for recovery.  If you
@@ -119,11 +123,11 @@ Vi compatibility.					|'compatible'|
 	considered to be a bug, or at least need improvement.  But still, Vim
 	starts in a mode which behaves like the "real" Vi as much as possible.
 	To make Vim behave a little bit better, try resetting the 'compatible'
-	option:
+	option: >
 		:set nocompatible
-	Or start Vim with the "-N" argument:
+<	Or start Vim with the "-N" argument: >
 		vim -N
-	Vim starts with 'nocompatible' automatically if you have a .vimrc
+<	Vim starts with 'nocompatible' automatically if you have a .vimrc
 	file.  See |startup|.
 	The 'cpoptions' option can be used to set Vi compatibility on/off for
 	a number of specific items.
@@ -133,19 +137,13 @@ Support for different systems.
 	- All Unix systems (it works on all systems it was tested on, although
 	  the GUI and Perl interface may not work everywhere).
 	- Amiga (500, 1000, 1200, 2000, 3000, 4000, ...).
-	- MS-DOS in real-mode (no additional drivers required).
-	- In protected mode on Windows 3.1 and MS-DOS (DPMI driver required).
-	- Windows 95 and Windows NT, with support for long file names.
-	- OS/2 (needs emx.dll)
-	- Atari MiNT
+	- MS-Windows
 	- VMS
-	- BeOS
 	- Macintosh
-	- Risc OS
 	- IBM OS/390
 	Note that on some systems features need to be disabled to reduce
-	resource usage, esp. on MS-DOS.  For some outdated systems you need to
-	use an older Vim version.
+	resource usage.  For some outdated systems you need to use an older
+	Vim version.
 
 Multi level persistent undo.					|undo|
 	'u' goes backward in time, 'CTRL-R' goes forward again.  Set option
@@ -166,8 +164,8 @@ Graphical User Interface (GUI).				|gui|
 	Included support for GUI: menu's, mouse, scrollbars, etc.  You can
 	define your own menus.  Better support for CTRL/SHIFT/ALT keys in
 	combination with special keys and mouse.  Supported for various
-	platforms, such as X11 (with Motif and Athena interfaces), GTK, Win32
-	(Windows 95 and later), BeOS, Amiga and Macintosh.
+	platforms, such as X11 with Motif, GTK, Win32 (Windows XP and later),
+	Amiga and Macintosh.
 
 Multiple windows and buffers.				|windows.txt|
 	Vim can split the screen into several windows, each editing a
@@ -340,6 +338,7 @@ Insert-mode completion.					|ins-completion|
 	|i_CTRL-X_CTRL-D|	definitions or macros
 	|i_CTRL-X_CTRL-O|	Omni completion: clever completion
 				specifically for a file type
+	|i_CTRL-X_CTRL-R|	contents from registers
 	etc.
 
 Long line support.					|'wrap'| |'linebreak'|
@@ -457,9 +456,8 @@ Printing.						|printing|
 
 Mouse support.						|mouse-using|
 	The mouse is supported in the GUI version, in an xterm for Unix, for
-	BSDs with sysmouse, for Linux with gpm, for MS-DOS, and Win32.  It
-	can be used to position the cursor, select the visual area, paste a
-	register, etc.
+	BSDs with sysmouse, for Linux with gpm, and Win32.  It can be used to
+	position the cursor, select the visual area, paste a register, etc.
 
 Usage of key names.					|<>| |key-notation|
 	Special keys now all have a name like <Up>, <End>, etc.
@@ -474,7 +472,7 @@ Editing binary files.					|edit-binary|
 			last line in the file.
 
 Multi-language support.					|multi-lang|
-	Files in double-byte or multi-byte encodings can be edited.  There is
+	Files in double-byte or multibyte encodings can be edited.  There is
 	UTF-8 support to be able to edit various languages at the same time,
 	without switching fonts. |UTF-8|
 	Messages and menus are available in different languages.
@@ -703,7 +701,7 @@ first character).
 
 CTRL-A works like CTRL-@ but does not leave insert mode.
 
-CTRL-R {0-9a-z..} can be used to insert the contents of a register.
+CTRL-R {register} can be used to insert the contents of a register.
 
 When the 'smartindent' option is set, C programs will be better auto-indented.
 With 'cindent' even more.
@@ -779,8 +777,8 @@ If the 'insertmode' option is set (e.g. in .exrc), Vim starts in insert mode.
 And it comes back there, when pressing <Esc>.
 
 Undo information is kept in memory.  Available memory limits the number and
-size of change that can be undone.  This may be a problem with MS-DOS, is
-hardly a problem on the Amiga and almost never with Unix and Win32.
+size of change that can be undone.  This is hardly a problem on the Amiga and
+almost never with Unix and Win32.
 
 If the 'backup' or 'writebackup' option is set: Before a file is overwritten,
 a backup file (.bak) is made.  If the "backup" option is set it is left
@@ -1104,7 +1102,7 @@ The following options are supported by Vi: ~
 'shiftwidth'	  'sw'	    number of spaces to use for (auto)indent step
 'showmatch'	  'sm'	    briefly jump to matching bracket if insert one
 'showmode'	  'smd'     message on status line to show current mode
-'tabstop'	  'ts'	    number of spaces that <Tab> in file uses
+'tabstop'	  'ts'	    number of columns between two tab stops
 'taglength'	  'tl'	    number of significant characters for a tag
 'tags'		  'tag'     list of file names used by the tag command
 			    {Vi: default is "tags /usr/lib/tags"}
@@ -1320,6 +1318,11 @@ Set the $VIM_POSIX environment variable to have 'cpoptions' include the POSIX
 flags when Vim starts up.  This makes Vim run as POSIX as it can.  That's
 a bit different from being Vi compatible.
 
+You can find the Posix specification for Vi here:
+https://pubs.opengroup.org/onlinepubs/9699919799/utilities/vi.html
+And the related Ex specification:
+https://pubs.opengroup.org/onlinepubs/9699919799/utilities/ex.html
+
 This is where Vim does not behave as POSIX specifies and why:
 
 							*posix-screen-size*
@@ -1363,5 +1366,37 @@ These are remarks about running the POSIX test suite:
   1 instead of 2.
 - ex test 534 fails because .exrc isn't read in silent mode.
 
+==============================================================================
+9. Supported Operating systems					*os-support*
+
+Vim tries to support some old operating systems, however support for older
+operating systems might be dropped if maintenance becomes a burden or can no
+longer be verified.
+
+Here is the status of some operating systems. Note fully supported means,
+support is verified as part of the CI test suite.
+
+System				| Status:~
+--------------------------------+-----------------------------------------
+Amiga (OS4, AROS & MorphOS):	| still supported (?)
+Haiku:				| still supported (?)
+Linux:				| fully supported (on maintained versions)
+Mac OS:				| fully supported up until v10.6 (?)
+MS-Windows 7, 8, 10, 11:	| fully supported
+UNIX:				| supported (on maintained versions)
+OpenVMS:			| supported
+QNX:				| still supported (?)
+zOS/OS390:			| still supported (?)
+
+The following operating systems are no longer supported:
+
+System				| Status:~
+--------------------------------+-----------------------------------------
+Atari MiNT			| support was dropped with v8.2.1215
+BeOS:				| support was dropped with v8.2.0849
+MS-DOS:				| support was dropped with v7.4.1399
+MS-Windows XP and Vista:	| support was dropped with v9.0.0496
+OS/2				| support was dropped with v7.4.1008
+RISC OS:			| support was dropped with v7.3.0187
 
  vim:tw=78:ts=8:noet:ft=help:norl:

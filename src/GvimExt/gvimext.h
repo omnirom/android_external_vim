@@ -44,12 +44,6 @@
 #include <shlobj.h>
 #include <wchar.h>
 
-/* Accommodate old versions of VC that don't have a modern Platform SDK */
-#if (defined(_MSC_VER) && _MSC_VER < 1300) || !defined(MAXULONG_PTR)
-# undef  UINT_PTR
-# define UINT_PTR UINT
-#endif
-
 #define ResultFromShort(i)  ResultFromScode(MAKE_SCODE(SEVERITY_SUCCESS, 0, (USHORT)(i)))
 
 // Initialize GUIDs (should be done only and at-least once per DLL/EXE)
@@ -57,7 +51,6 @@
 #pragma data_seg(".text")
 #define INITGUID
 #include <initguid.h>
-#include <shlguid.h>
 
 //
 // The class ID of this Shell extension class.
@@ -88,21 +81,20 @@ DEFINE_GUID(CLSID_ShellExtension, 0x51eee242, 0xad87, 0x11d3, 0x9c, 0x1e, 0x0, 0
 class CShellExtClassFactory : public IClassFactory
 {
 protected:
-	ULONG	m_cRef;
+    ULONG	m_cRef;
 
 public:
-	CShellExtClassFactory();
-	~CShellExtClassFactory();
+    CShellExtClassFactory();
+    ~CShellExtClassFactory();
 
-	//IUnknown members
-	STDMETHODIMP			QueryInterface(REFIID, LPVOID FAR *);
-	STDMETHODIMP_(ULONG)	AddRef();
-	STDMETHODIMP_(ULONG)	Release();
+    //IUnknown members
+    STDMETHODIMP		QueryInterface(REFIID, LPVOID FAR *);
+    STDMETHODIMP_(ULONG)	AddRef();
+    STDMETHODIMP_(ULONG)	Release();
 
-	//IClassFactory members
-	STDMETHODIMP		CreateInstance(LPUNKNOWN, REFIID, LPVOID FAR *);
-	STDMETHODIMP		LockServer(BOOL);
-
+    //IClassFactory members
+    STDMETHODIMP		CreateInstance(LPUNKNOWN, REFIID, LPVOID FAR *);
+    STDMETHODIMP		LockServer(BOOL);
 };
 typedef CShellExtClassFactory *LPCSHELLEXTCLASSFACTORY;
 #define MAX_HWND 100
@@ -130,18 +122,12 @@ protected:
 	    int iShowCmd,
 	    int idHWnd);
 
-    STDMETHODIMP InvokeGvim(HWND hParent,
-	    LPCSTR pszWorkingDir,
-	    LPCSTR pszCmd,
-	    LPCSTR pszParam,
-	    int iShowCmd);
-
     STDMETHODIMP InvokeSingleGvim(HWND hParent,
-	    LPCSTR pszWorkingDir,
+	    LPCWSTR workingDir,
 	    LPCSTR pszCmd,
 	    LPCSTR pszParam,
 	    int iShowCmd,
-	    int useDiff);
+	    int gvimExtraOptions);
 
 public:
     int		 m_cntOfHWnd;

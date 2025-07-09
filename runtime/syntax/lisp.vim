@@ -1,9 +1,11 @@
 " Vim syntax file
 " Language:    Lisp
-" Maintainer:  Charles E. Campbell <NdrOchipS@PcampbellAfamily.Mbiz>
-" Last Change: Mar 26, 2019
-" Version:     28
-" URL:	http://www.drchip.org/astronaut/vim/index.html#SYNTAX_LISP
+" Maintainer:	This runtime file is looking for a new maintainer.
+" Former Maintainer:  Charles E. Campbell
+" Last Change: Nov 10, 2021
+"   2024 Feb 19 by Vim Project (announce adoption)
+" Version:     31
+" Former URL:	http://www.drchip.org/astronaut/vim/index.html#SYNTAX_LISP
 "
 "  Thanks to F Xavier Noria for a list of 978 Common Lisp symbols taken from HyperSpec
 "  Clisp additions courtesy of http://clisp.cvs.sourceforge.net/*checkout*/clisp/clisp/emacs/lisp.vim
@@ -54,20 +56,20 @@ if exists("g:lisp_rainbow") && g:lisp_rainbow != 0
  syn region lispParen8 contained matchgroup=hlLevel8 start="`\=(" end=")" skip="|.\{-}|" contains=@lispListCluster,lispParen9
  syn region lispParen9 contained matchgroup=hlLevel9 start="`\=(" end=")" skip="|.\{-}|" contains=@lispListCluster,lispParen0
 else
- syn region lispList			matchgroup=Delimiter start="("   skip="|.\{-}|"			matchgroup=Delimiter end=")"	contains=@lispListCluster
- syn region lispBQList			matchgroup=PreProc   start="`("  skip="|.\{-}|"			matchgroup=PreProc   end=")"		contains=@lispListCluster
+ syn region lispList		matchgroup=lispParen start="("   skip="|.\{-}|"		matchgroup=lispParen end=")"	contains=@lispListCluster
+ syn region lispBQList		matchgroup=PreProc   start="`("  skip="|.\{-}|"		matchgroup=PreProc   end=")"	contains=@lispListCluster
 endif
 
 " ---------------------------------------------------------------------
 " Atoms: {{{1
-syn match lispAtomMark			"'"
-syn match lispAtom			"'("me=e-1			contains=lispAtomMark	nextgroup=lispAtomList
-syn match lispAtom			"'[^ \t()]\+"			contains=lispAtomMark
-syn match lispAtomBarSymbol		!'|..\{-}|!			contains=lispAtomMark
-syn region lispAtom			start=+'"+			skip=+\\"+ end=+"+
-syn region lispAtomList			contained			matchgroup=Special start="("	skip="|.\{-}|" matchgroup=Special end=")"	contains=@lispAtomCluster,lispString,lispEscapeSpecial
-syn match lispAtomNmbr			contained			"\<\d\+"
-syn match lispLeadWhite			contained			"^\s\+"
+syn match lispAtomMark		"'"
+syn match lispAtom		"'("me=e-1			contains=lispAtomMark	nextgroup=lispAtomList
+syn match lispAtom		"'[^ \t()]\+"			contains=lispAtomMark
+syn match lispAtomBarSymbol	!'|..\{-}|!			contains=lispAtomMark
+syn region lispAtom		start=+'"+			skip=+\\"+ end=+"+
+syn region lispAtomList		contained			matchgroup=Special start="("	skip="|.\{-}|" matchgroup=Special end=")"	contains=@lispAtomCluster,lispString,lispEscapeSpecial
+syn match lispAtomNmbr		contained			"\<\d\+"
+syn match lispLeadWhite		contained			"^\s\+"
 
 " ---------------------------------------------------------------------
 " Standard Lisp Functions and Macros: {{{1
@@ -553,6 +555,8 @@ syn match lispParenError	")"
 syn cluster lispCommentGroup	contains=lispTodo,@Spell
 syn match   lispComment		";.*$"				contains=@lispCommentGroup
 syn region  lispCommentRegion	start="#|" end="|#"		contains=lispCommentRegion,@lispCommentGroup
+syn region  lispComment		start="#+nil"	end="\ze)"	contains=@lispCommentGroup
+syn match   lispComment		'^\s*#+nil.*$'			contains=@lispCommentGroup
 syn keyword lispTodo		contained			combak			combak:			todo			todo:
 
 " ---------------------------------------------------------------------
@@ -608,6 +612,8 @@ if !exists("skip_lisp_syntax_inits")
     hi def hlLevel8 ctermfg=blue	guifg=darkslateblue
     hi def hlLevel9 ctermfg=darkmagenta	guifg=darkviolet
    endif
+  else
+    hi def link lispParen Delimiter
   endif
 
 endif

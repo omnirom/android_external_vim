@@ -1,7 +1,7 @@
 " Vim ABAP syntax file
 "    Language: SAP - ABAP/R4
 "  Maintainer: Marius Piedallu van Wyk <lailoken@gmail.com>
-" Last Change: 2018 Dec 12
+" Last Change: 2021 Jan 02
 "     Comment: Thanks to EPI-USE Labs for all your assistance. :)
 
 " Quit when a syntax file was already loaded
@@ -122,7 +122,7 @@ syn keyword abapStatement TABLES TIMES TRANSFER TRANSLATE TRY TYPE TYPES
 syn keyword abapStatement UNASSIGN ULINE UNPACK UPDATE
 syn keyword abapStatement WHEN WHILE WINDOW WRITE
 
-" More statemets
+" More statements
 syn keyword abapStatement LINES
 syn keyword abapStatement INTO GROUP BY HAVING ORDER BY SINGLE
 syn keyword abapStatement APPENDING CORRESPONDING FIELDS OF TABLE

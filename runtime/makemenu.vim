@@ -1,52 +1,55 @@
-" Script to define the syntax menu in synmenu.vim
-" Maintainer:	Bram Moolenaar <Bram@vim.org>
-" Last Change:	2018 May 17
+vim9script
 
-" This is used by "make menu" in the src directory.
+# Script to define the syntax menu in synmenu.vim
+# Maintainer:	The Vim Project <https://github.com/vim/vim>
+# Last Change:	2025 Mar 09
+# Former Maintainer:	Bram Moolenaar <Bram@vim.org>
+
+# This is used by "make menu" in the src directory.
 edit <sfile>:p:h/synmenu.vim
 
-/The Start Of The Syntax Menu/+1,/The End Of The Syntax Menu/-1d
-let s:lnum = line(".") - 1
-call append(s:lnum, "")
-let s:lnum = s:lnum + 1
+:/The Start Of The Syntax Menu/+1,/The End Of The Syntax Menu/-1d
+var lnum = line(".") - 1
+call append(lnum, "")
+lnum += 1
 
-" Use the SynMenu command and function to define all menu entries
-command! -nargs=* SynMenu call <SID>Syn(<q-args>)
+# Use the SynMenu command and function to define all menu entries
+command! -nargs=* SynMenu call Syn(<q-args>)
 
-let s:cur_menu_name = ""
-let s:cur_menu_nr = 0
-let s:cur_menu_item = 0
-let s:cur_menu_char = ""
+var cur_menu_name = ""
+var cur_menu_nr = 0
+var cur_menu_item = 0
+var cur_menu_char = ""
 
-fun! <SID>Syn(arg)
-  " isolate menu name: until the first dot
-  let i = match(a:arg, '\.')
-  let menu_name = strpart(a:arg, 0, i)
-  let r = strpart(a:arg, i + 1, 999)
-  " isolate submenu name: until the colon
-  let i = match(r, ":")
-  let submenu_name = strpart(r, 0, i)
-  " after the colon is the syntax name
-  let syntax_name = strpart(r, i + 1, 999)
+def Syn(arg: string)
+  # isolate menu name: until the first dot
+  var i = match(arg, '\.')
+  var menu_name = strpart(arg, 0, i)
+  var r = strpart(arg, i + 1, 999)
+  # isolate submenu name: until the colon
+  i = match(r, ":")
+  var submenu_name = strpart(r, 0, i)
+  # after the colon is the syntax name
+  var syntax_name = strpart(r, i + 1, 999)
 
-  if s:cur_menu_name != menu_name
-    let s:cur_menu_name = menu_name
-    let s:cur_menu_nr = s:cur_menu_nr + 10
-    let s:cur_menu_item = 100
-    let s:cur_menu_char = submenu_name[0]
+  if cur_menu_name != menu_name
+    cur_menu_name = menu_name
+    cur_menu_nr += 10
+    cur_menu_item = 100
+    cur_menu_char = submenu_name[0]
   else
-    " When starting a new letter, insert a menu separator.
-    let c = submenu_name[0]
-    if c != s:cur_menu_char
-      exe 'an 50.' . s:cur_menu_nr . '.' . s:cur_menu_item . ' &Syntax.' . menu_name . ".-" . c . '- <nul>'
-      let s:cur_menu_item = s:cur_menu_item + 10
-      let s:cur_menu_char = c
+    # When starting a new letter, insert a menu separator.
+    var c = submenu_name[0]
+    if c != cur_menu_char
+      exe 'an 50.' .. cur_menu_nr .. '.' .. cur_menu_item .. ' &Syntax.' .. menu_name .. ".-" .. c .. '- <nul>'
+      cur_menu_item += 10
+      cur_menu_char = c
     endif
   endif
-  call append(s:lnum, 'an 50.' . s:cur_menu_nr . '.' . s:cur_menu_item . ' &Syntax.' . menu_name . "." . submenu_name . ' :cal SetSyn("' . syntax_name . '")<CR>')
-  let s:cur_menu_item = s:cur_menu_item + 10
-  let s:lnum = s:lnum + 1
-endfun
+  append(lnum, 'an 50.' .. cur_menu_nr .. '.' .. cur_menu_item .. ' &Syntax.' .. menu_name .. "." .. submenu_name .. ' :cal SetSyn("' .. syntax_name .. '")<CR>')
+  cur_menu_item += 10
+  lnum += 1
+enddef
 
 SynMenu AB.A2ps\ config:a2ps
 SynMenu AB.Aap:aap
@@ -86,7 +89,7 @@ SynMenu AB.Assembly.PIC:pic
 SynMenu AB.Assembly.Turbo:tasm
 SynMenu AB.Assembly.VAX\ Macro\ Assembly:vmasm
 SynMenu AB.Assembly.Z-80:z8a
-SynMenu AB.Assembly.xa\ 6502\ cross\ assember:a65
+SynMenu AB.Assembly.xa\ 6502\ cross\ assembler:a65
 SynMenu AB.ASN\.1:asn
 SynMenu AB.Asterisk\ config:asterisk
 SynMenu AB.Asterisk\ voicemail\ config:asteriskvm
@@ -101,6 +104,7 @@ SynMenu AB.AYacc:ayacc
 
 SynMenu AB.B:b
 SynMenu AB.Baan:baan
+SynMenu AB.Bash:bash
 SynMenu AB.Basic.FreeBasic:freebasic
 SynMenu AB.Basic.IBasic:ibasic
 SynMenu AB.Basic.QBasic:basic
@@ -128,8 +132,9 @@ SynMenu C.Century\ Term:cterm
 SynMenu C.CH\ script:ch
 SynMenu C.ChaiScript:chaiscript
 SynMenu C.ChangeLog:changelog
-SynMenu C.Cheetah\ template:cheetah
 SynMenu C.CHILL:chill
+SynMenu C.Cheetah\ template:cheetah
+SynMenu C.Chicken:chicken
 SynMenu C.ChordPro:chordpro
 SynMenu C.Clean:clean
 SynMenu C.Clever:cl
@@ -160,6 +165,7 @@ SynMenu C.Cyn++:cynpp
 SynMenu C.Cynlib:cynlib
 
 SynMenu DE.D:d
+SynMenu DE.Dart:dart
 SynMenu DE.Datascript:datascript
 SynMenu DE.Debian.Debian\ ChangeLog:debchangelog
 SynMenu DE.Debian.Debian\ Control:debcontrol
@@ -192,12 +198,14 @@ SynMenu DE.DTD:dtd
 SynMenu DE.DTML\ (Zope):dtml
 SynMenu DE.DTrace:dtrace
 SynMenu DE.Dts/dtsi:dts
+SynMenu DE.Dune:dune
 SynMenu DE.Dylan.Dylan:dylan
 SynMenu DE.Dylan.Dylan\ interface:dylanintr
 SynMenu DE.Dylan.Dylan\ lid:dylanlid
 
 SynMenu DE.EDIF:edif
 SynMenu DE.Eiffel:eiffel
+SynMenu DE.Eight:8th
 SynMenu DE.Elinks\ config:elinks
 SynMenu DE.Elm\ filter\ rules:elmfilt
 SynMenu DE.Embedix\ Component\ Description:ecd
@@ -267,11 +275,13 @@ SynMenu HIJK.Hercules:hercules
 SynMenu HIJK.Hex\ dump.XXD:xxd
 SynMenu HIJK.Hex\ dump.Intel\ MCS51:hex
 SynMenu HIJK.Hg\ commit:hgcommit
+SynMenu HIJK.Hollywood:hollywood
 SynMenu HIJK.HTML.HTML:html
 SynMenu HIJK.HTML.HTML\ with\ M4:htmlm4
 SynMenu HIJK.HTML.HTML\ with\ Ruby\ (eRuby):eruby
 SynMenu HIJK.HTML.Cheetah\ HTML\ template:htmlcheetah
 SynMenu HIJK.HTML.Django\ HTML\ template:htmldjango
+SynMenu HIJK.HTML.Vue.js\ HTML\ template:vuejs
 SynMenu HIJK.HTML.HTML/OS:htmlos
 SynMenu HIJK.HTML.XHTML:xhtml
 SynMenu HIJK.Host\.conf:hostconf
@@ -305,6 +315,7 @@ SynMenu HIJK.Java.JavaCC:javacc
 SynMenu HIJK.Java.Java\ Server\ Pages:jsp
 SynMenu HIJK.Java.Java\ Properties:jproperties
 SynMenu HIJK.JavaScript:javascript
+SynMenu HIJK.JavaScriptReact:javascriptreact
 SynMenu HIJK.Jess:jess
 SynMenu HIJK.Jgraph:jgraph
 SynMenu HIJK.Jovial:jovial
@@ -316,7 +327,7 @@ SynMenu HIJK.Kivy:kivy
 SynMenu HIJK.KixTart:kix
 
 SynMenu L.Lace:lace
-SynMenu L.LamdaProlog:lprolog
+SynMenu L.LambdaProlog:lprolog
 SynMenu L.Latte:latte
 SynMenu L.Ld\ script:ld
 SynMenu L.LDAP.LDIF:ldif
@@ -363,6 +374,7 @@ SynMenu M.Mathematica:mma
 SynMenu M.Matlab:matlab
 SynMenu M.Maxima:maxima
 SynMenu M.MEL\ (for\ Maya):mel
+SynMenu M.Meson:meson
 SynMenu M.Messages\ (/var/log):messages
 SynMenu M.Metafont:mf
 SynMenu M.MetaPost:mp
@@ -372,8 +384,10 @@ SynMenu M.MMIX:mmix
 SynMenu M.Modconf:modconf
 SynMenu M.Model:model
 SynMenu M.Modsim\ III:modsim3
-SynMenu M.Modula\ 2:modula2
-SynMenu M.Modula\ 3:modula3
+SynMenu M.Modula-2.R10\ (2010):modula2:r10
+SynMenu M.Modula-2.ISO\ (1994):modula2:iso
+SynMenu M.Modula-2.PIM\ (1985):modula2:pim
+SynMenu M.Modula-3:modula3
 SynMenu M.Monk:monk
 SynMenu M.Motorola\ S-Record:srec
 SynMenu M.Mplayer\ config:mplayerconf
@@ -465,12 +479,14 @@ SynMenu R.R.R\ help:rhelp
 SynMenu R.R.R\ noweb:rnoweb
 SynMenu R.Racc\ input:racc
 SynMenu R.Radiance:radiance
+SynMenu R.Raml:raml
 SynMenu R.Ratpoison:ratpoison
 SynMenu R.RCS.RCS\ log\ output:rcslog
 SynMenu R.RCS.RCS\ file:rcs
 SynMenu R.Readline\ config:readline
 SynMenu R.Rebol:rebol
 SynMenu R.ReDIF:redif
+SynMenu R.Rego:rego
 SynMenu R.Relax\ NG:rng
 SynMenu R.Remind:remind
 SynMenu R.Relax\ NG\ compact:rnc
@@ -589,6 +605,7 @@ SynMenu T.TealInfo:tli
 SynMenu T.Telix\ Salt:tsalt
 SynMenu T.Termcap/Printcap:ptcap
 SynMenu T.Terminfo:terminfo
+SynMenu T.Tera:tera
 SynMenu T.Tera\ Term:teraterm
 SynMenu T.TeX.TeX/LaTeX:tex
 SynMenu T.TeX.plain\ TeX:plaintex
@@ -607,6 +624,8 @@ SynMenu T.Trustees:trustees
 SynMenu T.TSS.Command\ Line:tsscl
 SynMenu T.TSS.Geometry:tssgm
 SynMenu T.TSS.Optics:tssop
+SynMenu T.Typescript:typescript
+SynMenu T.TypescriptReact:typescriptreact
 
 SynMenu UV.Udev\ config:udevconf
 SynMenu UV.Udev\ permissions:udevperm
@@ -635,6 +654,7 @@ SynMenu UV.VSE\ JCL:vsejcl
 SynMenu WXYZ.WEB.CWEB:cweb
 SynMenu WXYZ.WEB.WEB:web
 SynMenu WXYZ.WEB.WEB\ Changes:change
+SynMenu WXYZ.WebAssembly:wat
 SynMenu WXYZ.Webmacro:webmacro
 SynMenu WXYZ.Website\ MetaLanguage:wml
 SynMenu WXYZ.wDiff:wdiff
@@ -661,7 +681,8 @@ SynMenu WXYZ.XFree86\ Config:xf86conf
 SynMenu WXYZ.YAML:yaml
 SynMenu WXYZ.Yacc:yacc
 SynMenu WXYZ.Zimbu:zimbu
+SynMenu WXYZ.Zserio:zserio
 
-call append(s:lnum, "")
+append(lnum, "")
 
 wq

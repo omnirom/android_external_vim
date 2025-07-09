@@ -49,6 +49,7 @@ static void decode_utf8(VTermEncoding *enc UNUSED, void *data_,
       if(data->bytes_remaining) {
         data->bytes_remaining = 0;
         cp[(*cpi)++] = UNICODE_INVALID;
+	// VIM: avoid going over the end
 	if (*cpi >= cplen)
 	  break;
       }
@@ -157,8 +158,8 @@ static void decode_utf8(VTermEncoding *enc UNUSED, void *data_,
 }
 
 static VTermEncoding encoding_utf8 = {
-  &init_utf8,  /* init */
-  &decode_utf8 /* decode */
+  &init_utf8,  // init
+  &decode_utf8 // decode
 };
 
 static void decode_usascii(VTermEncoding *enc UNUSED, void *data UNUSED,
@@ -178,8 +179,8 @@ static void decode_usascii(VTermEncoding *enc UNUSED, void *data UNUSED,
 }
 
 static VTermEncoding encoding_usascii = {
-  NULL,           /* init */
-  &decode_usascii /* decode */
+  NULL,           // init
+  &decode_usascii // decode
 };
 
 struct StaticTableEncoding {
@@ -226,8 +227,7 @@ encodings[] = {
 /* This ought to be INTERNAL but isn't because it's used by unit testing */
 VTermEncoding *vterm_lookup_encoding(VTermEncodingType type, char designation)
 {
-  int i;
-  for(i = 0; encodings[i].designation; i++)
+  for(int i = 0; encodings[i].designation; i++)
     if(encodings[i].type == type && encodings[i].designation == designation)
       return encodings[i].enc;
   return NULL;

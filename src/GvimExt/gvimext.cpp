@@ -35,6 +35,15 @@ UINT cbFiles = 0;
  * enough */
 #define BUFSIZE 1100
 
+// The "Edit with Vim" shell extension provides these choices when
+// a new instance of Gvim is selected:
+//   - use tabpages
+//   - enable diff mode
+//   - none of the above
+#define EDIT_WITH_VIM_USE_TABPAGES (2)
+#define EDIT_WITH_VIM_IN_DIFF_MODE (1)
+#define EDIT_WITH_VIM_NO_OPTIONS   (0)
+
 //
 // Get the name of the Gvim executable to use, with the path.
 // When "runtime" is non-zero, we were called to find the runtime directory.
@@ -46,10 +55,25 @@ getGvimName(char *name, int runtime)
     HKEY	keyhandle;
     DWORD	hlen;
 
-    // Get the location of gvim from the registry.
+    // Get the location of gvim from the registry.  Try
+    // HKEY_CURRENT_USER first, then fall back to HKEY_LOCAL_MACHINE if
+    // not found.
     name[0] = 0;
-    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\Vim\\Gvim", 0,
+    if (RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\Vim\\Gvim", 0,
 				       KEY_READ, &keyhandle) == ERROR_SUCCESS)
+    {
+	hlen = BUFSIZE;
+	if (RegQueryValueEx(keyhandle, "path", 0, NULL, (BYTE *)name, &hlen)
+							     != ERROR_SUCCESS)
+	    name[0] = 0;
+	else
+	    name[hlen] = 0;
+	RegCloseKey(keyhandle);
+    }
+
+    if ((name[0] == 0) &&
+	    (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\Vim\\Gvim", 0,
+				       KEY_READ, &keyhandle) == ERROR_SUCCESS))
     {
 	hlen = BUFSIZE;
 	if (RegQueryValueEx(keyhandle, "path", 0, NULL, (BYTE *)name, &hlen)
@@ -121,33 +145,48 @@ getRuntimeDir(char *buf)
     }
 }
 
-HBITMAP IconToBitmap(HICON hIcon, HBRUSH hBackground, int width, int height)
+    WCHAR *
+utf8_to_utf16(const char *s)
 {
-	HDC hDC = GetDC(NULL);
-	HDC hMemDC = CreateCompatibleDC(hDC);
-	HBITMAP hMemBmp = CreateCompatibleBitmap(hDC, width, height);
-	HBITMAP hResultBmp = NULL;
-	HGDIOBJ hOrgBMP = SelectObject(hMemDC, hMemBmp);
+    int size = MultiByteToWideChar(CP_UTF8, 0, s, -1, NULL, 0);
+    WCHAR *buf = (WCHAR *)malloc(size * sizeof(WCHAR));
+    MultiByteToWideChar(CP_UTF8, 0, s, -1, buf, size);
+    return buf;
+}
 
-	DrawIconEx(hMemDC, 0, 0, hIcon, width, height, 0, hBackground, DI_NORMAL);
+    HBITMAP
+IconToBitmap(HICON hIcon, HBRUSH hBackground, int width, int height)
+{
+    HDC hDC = GetDC(NULL);
+    HDC hMemDC = CreateCompatibleDC(hDC);
+    HBITMAP hMemBmp = CreateCompatibleBitmap(hDC, width, height);
+    HBITMAP hResultBmp = NULL;
+    HGDIOBJ hOrgBMP = SelectObject(hMemDC, hMemBmp);
 
-	hResultBmp = hMemBmp;
-	hMemBmp = NULL;
+    DrawIconEx(hMemDC, 0, 0, hIcon, width, height, 0, hBackground, DI_NORMAL);
 
-	SelectObject(hMemDC, hOrgBMP);
-	DeleteDC(hMemDC);
-	ReleaseDC(NULL, hDC);
-	DestroyIcon(hIcon);
-	return hResultBmp;
+    hResultBmp = hMemBmp;
+    hMemBmp = NULL;
+
+    SelectObject(hMemDC, hOrgBMP);
+    DeleteDC(hMemDC);
+    ReleaseDC(NULL, hDC);
+    DestroyIcon(hIcon);
+    return hResultBmp;
 }
 
 //
 // GETTEXT: translated messages and menu entries
 //
 #ifndef FEAT_GETTEXT
-# define _(x)  x
+# define _(x)	    x
+# define W_impl(x) _wcsdup(L##x)
+# define W(x)	    W_impl(x)
+# define set_gettext_codeset()	    NULL
+# define restore_gettext_codeset(x)
 #else
-# define _(x)  (*dyn_libintl_gettext)(x)
+# define _(x)	    (*dyn_libintl_gettext)(x)
+# define W(x)	    utf8_to_utf16(x)
 # define VIMPACKAGE "vim"
 # ifndef GETTEXT_DLL
 #  define GETTEXT_DLL "libintl.dll"
@@ -158,15 +197,17 @@ HBITMAP IconToBitmap(HICON hIcon, HBRUSH hBackground, int width, int height)
 static char *null_libintl_gettext(const char *);
 static char *null_libintl_textdomain(const char *);
 static char *null_libintl_bindtextdomain(const char *, const char *);
+static char *null_libintl_bind_textdomain_codeset(const char *, const char *);
 static int dyn_libintl_init(char *dir);
 static void dyn_libintl_end(void);
 
-static wchar_t *oldenv = NULL;
 static HINSTANCE hLibintlDLL = 0;
 static char *(*dyn_libintl_gettext)(const char *) = null_libintl_gettext;
 static char *(*dyn_libintl_textdomain)(const char *) = null_libintl_textdomain;
 static char *(*dyn_libintl_bindtextdomain)(const char *, const char *)
 						= null_libintl_bindtextdomain;
+static char *(*dyn_libintl_bind_textdomain_codeset)(const char *, const char *)
+				       = null_libintl_bind_textdomain_codeset;
 
 //
 // Attempt to load libintl.dll.  If it doesn't work, use dummy functions.
@@ -186,6 +227,7 @@ dyn_libintl_init(char *dir)
 	{(char *)"gettext",		(FARPROC*)&dyn_libintl_gettext},
 	{(char *)"textdomain",		(FARPROC*)&dyn_libintl_textdomain},
 	{(char *)"bindtextdomain",	(FARPROC*)&dyn_libintl_bindtextdomain},
+	{(char *)"bind_textdomain_codeset", (FARPROC*)&dyn_libintl_bind_textdomain_codeset},
 	{NULL, NULL}
     };
     DWORD	len, len2;
@@ -205,17 +247,17 @@ dyn_libintl_init(char *dir)
     if (buf != NULL && buf2 != NULL)
     {
 	GetEnvironmentVariableW(L"PATH", buf, len);
-#ifdef _WIN64
+# ifdef _WIN64
 	_snwprintf(buf2, len2, L"%S\\GvimExt64;%s", dir, buf);
-#else
+# else
 	_snwprintf(buf2, len2, L"%S\\GvimExt32;%s", dir, buf);
-#endif
+# endif
 	SetEnvironmentVariableW(L"PATH", buf2);
 	hLibintlDLL = LoadLibrary(GETTEXT_DLL);
-#ifdef GETTEXT_DLL_ALT
+# ifdef GETTEXT_DLL_ALT
 	if (!hLibintlDLL)
 	    hLibintlDLL = LoadLibrary(GETTEXT_DLL_ALT);
-#endif
+# endif
 	SetEnvironmentVariableW(L"PATH", buf);
     }
     free(buf);
@@ -246,6 +288,7 @@ dyn_libintl_end(void)
     dyn_libintl_gettext		= null_libintl_gettext;
     dyn_libintl_textdomain	= null_libintl_textdomain;
     dyn_libintl_bindtextdomain	= null_libintl_bindtextdomain;
+    dyn_libintl_bind_textdomain_codeset	= null_libintl_bind_textdomain_codeset;
 }
 
     static char *
@@ -255,13 +298,19 @@ null_libintl_gettext(const char *msgid)
 }
 
     static char *
+null_libintl_textdomain(const char * /* domainname */)
+{
+    return NULL;
+}
+
+    static char *
 null_libintl_bindtextdomain(const char * /* domainname */, const char * /* dirname */)
 {
     return NULL;
 }
 
     static char *
-null_libintl_textdomain(const char*  /* domainname */)
+null_libintl_bind_textdomain_codeset(const char * /* domainname */, const char * /* codeset */)
 {
     return NULL;
 }
@@ -273,56 +322,7 @@ null_libintl_textdomain(const char*  /* domainname */)
 dyn_gettext_load(void)
 {
     char    szBuff[BUFSIZE];
-    char    szLang[BUFSIZE];
     DWORD   len;
-    HKEY    keyhandle;
-    int	    gotlang = 0;
-
-    strcpy(szLang, "LANG=");
-
-    // First try getting the language from the registry, this can be
-    // used to overrule the system language.
-    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\Vim\\Gvim", 0,
-				       KEY_READ, &keyhandle) == ERROR_SUCCESS)
-    {
-	len = BUFSIZE;
-	if (RegQueryValueEx(keyhandle, "lang", 0, NULL, (BYTE*)szBuff, &len)
-							     == ERROR_SUCCESS)
-	{
-	    szBuff[len] = 0;
-	    strcat(szLang, szBuff);
-	    gotlang = 1;
-	}
-	RegCloseKey(keyhandle);
-    }
-
-    if (!gotlang && getenv("LANG") == NULL)
-    {
-	// Get the language from the system.
-	// Could use LOCALE_SISO639LANGNAME, but it's not in Win95.
-	// LOCALE_SABBREVLANGNAME gives us three letters, like "enu", we use
-	// only the first two.
-	len = GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SABBREVLANGNAME,
-						    (LPTSTR)szBuff, BUFSIZE);
-	if (len >= 2 && _strnicmp(szBuff, "en", 2) != 0)
-	{
-	    // There are a few exceptions (probably more)
-	    if (_strnicmp(szBuff, "cht", 3) == 0
-					  || _strnicmp(szBuff, "zht", 3) == 0)
-		strcpy(szBuff, "zh_TW");
-	    else if (_strnicmp(szBuff, "chs", 3) == 0
-					  || _strnicmp(szBuff, "zhc", 3) == 0)
-		strcpy(szBuff, "zh_CN");
-	    else if (_strnicmp(szBuff, "jp", 2) == 0)
-		strcpy(szBuff, "ja");
-	    else
-		szBuff[2] = 0;	// truncate to two-letter code
-	    strcat(szLang, szBuff);
-	    gotlang = 1;
-	}
-    }
-    if (gotlang)
-	putenv(szLang);
 
     // Try to locate the runtime files.  The path is used to find libintl.dll
     // and the vim.mo files.
@@ -344,6 +344,29 @@ dyn_gettext_load(void)
 dyn_gettext_free(void)
 {
     dyn_libintl_end();
+}
+
+//
+// Use UTF-8 for gettext. Returns previous codeset.
+//
+    static char *
+set_gettext_codeset(void)
+{
+    char *prev = dyn_libintl_bind_textdomain_codeset(VIMPACKAGE, NULL);
+    prev = _strdup((prev != NULL) ? prev : "char");
+    dyn_libintl_bind_textdomain_codeset(VIMPACKAGE, "utf-8");
+
+    return prev;
+}
+
+//
+// Restore previous codeset for gettext.
+//
+    static void
+restore_gettext_codeset(char *prev)
+{
+    dyn_libintl_bind_textdomain_codeset(VIMPACKAGE, prev);
+    free(prev);
 }
 #endif // FEAT_GETTEXT
 
@@ -378,10 +401,8 @@ DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID  /* lpReserved */)
 inc_cRefThisDLL()
 {
 #ifdef FEAT_GETTEXT
-    if (g_cRefThisDll == 0) {
+    if (g_cRefThisDll == 0)
 	dyn_gettext_load();
-	oldenv = GetEnvironmentStringsW();
-    }
 #endif
     InterlockedIncrement((LPLONG)&g_cRefThisDll);
 }
@@ -390,13 +411,8 @@ inc_cRefThisDLL()
 dec_cRefThisDLL()
 {
 #ifdef FEAT_GETTEXT
-    if (InterlockedDecrement((LPLONG)&g_cRefThisDll) == 0) {
+    if (InterlockedDecrement((LPLONG)&g_cRefThisDll) == 0)
 	dyn_gettext_free();
-	if (oldenv != NULL) {
-	    FreeEnvironmentStringsW(oldenv);
-	    oldenv = NULL;
-	}
-    }
 #else
     InterlockedDecrement((LPLONG)&g_cRefThisDll);
 #endif
@@ -631,7 +647,7 @@ STDMETHODIMP CShellExt::QueryContextMenu(HMENU hMenu,
 
     hres = m_pDataObj->GetData(&fmte, &medium);
     if (medium.hGlobal)
-	cbFiles = DragQueryFile((HDROP)medium.hGlobal, (UINT)-1, 0, 0);
+	cbFiles = DragQueryFileW((HDROP)medium.hGlobal, (UINT)-1, 0, 0);
 
     // InsertMenu(hMenu, indexMenu++, MF_SEPARATOR|MF_BYPOSITION, 0, NULL);
 
@@ -655,11 +671,14 @@ STDMETHODIMP CShellExt::QueryContextMenu(HMENU hMenu,
 	RegCloseKey(keyhandle);
     }
 
+    // Use UTF-8 for gettext.
+    char *prev = set_gettext_codeset();
+
     // Retrieve all the vim instances, unless disabled.
     if (showExisting)
 	EnumWindows(EnumWindowsProc, (LPARAM)this);
 
-    MENUITEMINFO mii = { sizeof(MENUITEMINFO) };
+    MENUITEMINFOW mii = { sizeof(MENUITEMINFOW) };
     mii.fMask = MIIM_STRING | MIIM_ID;
     if (showIcons)
     {
@@ -670,22 +689,25 @@ STDMETHODIMP CShellExt::QueryContextMenu(HMENU hMenu,
     if (cbFiles > 1)
     {
 	mii.wID = idCmd++;
-	mii.dwTypeData = _("Edit with &multiple Vims");
-	mii.cch = lstrlen(mii.dwTypeData);
-	InsertMenuItem(hMenu, indexMenu++, TRUE, &mii);
+	mii.dwTypeData = W(_("Edit with Vim using &tabpages"));
+	mii.cch = wcslen(mii.dwTypeData);
+	InsertMenuItemW(hMenu, indexMenu++, TRUE, &mii);
+	free(mii.dwTypeData);
 
 	mii.wID = idCmd++;
-	mii.dwTypeData = _("Edit with single &Vim");
-	mii.cch = lstrlen(mii.dwTypeData);
-	InsertMenuItem(hMenu, indexMenu++, TRUE, &mii);
+	mii.dwTypeData = W(_("Edit with single &Vim"));
+	mii.cch = wcslen(mii.dwTypeData);
+	InsertMenuItemW(hMenu, indexMenu++, TRUE, &mii);
+	free(mii.dwTypeData);
 
 	if (cbFiles <= 4)
 	{
 	    // Can edit up to 4 files in diff mode
 	    mii.wID = idCmd++;
-	    mii.dwTypeData = _("Diff with Vim");
-	    mii.cch = lstrlen(mii.dwTypeData);
-	    InsertMenuItem(hMenu, indexMenu++, TRUE, &mii);
+	    mii.dwTypeData = W(_("Diff with Vim"));
+	    mii.cch = wcslen(mii.dwTypeData);
+	    InsertMenuItemW(hMenu, indexMenu++, TRUE, &mii);
+	    free(mii.dwTypeData);
 	    m_edit_existing_off = 3;
 	}
 	else
@@ -695,9 +717,10 @@ STDMETHODIMP CShellExt::QueryContextMenu(HMENU hMenu,
     else
     {
 	mii.wID = idCmd++;
-	mii.dwTypeData = _("Edit with &Vim");
-	mii.cch = lstrlen(mii.dwTypeData);
-	InsertMenuItem(hMenu, indexMenu++, TRUE, &mii);
+	mii.dwTypeData = W(_("Edit with &Vim"));
+	mii.cch = wcslen(mii.dwTypeData);
+	InsertMenuItemW(hMenu, indexMenu++, TRUE, &mii);
+	free(mii.dwTypeData);
 	m_edit_existing_off = 1;
     }
 
@@ -707,46 +730,49 @@ STDMETHODIMP CShellExt::QueryContextMenu(HMENU hMenu,
 	hSubMenu = CreatePopupMenu();
 	mii.fMask |= MIIM_SUBMENU;
 	mii.wID = idCmd;
-	mii.dwTypeData = _("Edit with existing Vim");
-	mii.cch = lstrlen(mii.dwTypeData);
+	mii.dwTypeData = W(_("Edit with existing Vim"));
+	mii.cch = wcslen(mii.dwTypeData);
 	mii.hSubMenu = hSubMenu;
-	InsertMenuItem(hMenu, indexMenu++, TRUE, &mii);
+	InsertMenuItemW(hMenu, indexMenu++, TRUE, &mii);
+	free(mii.dwTypeData);
 	mii.fMask = mii.fMask & ~MIIM_SUBMENU;
 	mii.hSubMenu = NULL;
     }
     // Now display all the vim instances
     for (int i = 0; i < m_cntOfHWnd; i++)
     {
-	char title[BUFSIZE];
-	char temp[BUFSIZE];
+	WCHAR title[BUFSIZE];
+	WCHAR temp[BUFSIZE];
 	int index;
 	HMENU hmenu;
 
 	// Obtain window title, continue if can not
-	if (GetWindowText(m_hWnd[i], title, BUFSIZE - 1) == 0)
+	if (GetWindowTextW(m_hWnd[i], title, BUFSIZE - 1) == 0)
 	    continue;
 	// Truncate the title before the path, keep the file name
-	char *pos = strchr(title, '(');
+	WCHAR *pos = wcschr(title, L'(');
 	if (pos != NULL)
 	{
-	    if (pos > title && pos[-1] == ' ')
+	    if (pos > title && pos[-1] == L' ')
 		--pos;
 	    *pos = 0;
 	}
 	// Now concatenate
 	if (m_cntOfHWnd > 1)
-	    temp[0] = '\0';
+	    temp[0] = L'\0';
 	else
 	{
-	    strncpy(temp, _("Edit with existing Vim - "), BUFSIZE - 1);
-	    temp[BUFSIZE - 1] = '\0';
+	    WCHAR *s = W(_("Edit with existing Vim - "));
+	    wcsncpy(temp, s, BUFSIZE - 1);
+	    temp[BUFSIZE - 1] = L'\0';
+	    free(s);
 	}
-	strncat(temp, title, BUFSIZE - 1 - strlen(temp));
-	temp[BUFSIZE - 1] = '\0';
+	wcsncat(temp, title, BUFSIZE - 1 - wcslen(temp));
+	temp[BUFSIZE - 1] = L'\0';
 
 	mii.wID = idCmd++;
 	mii.dwTypeData = temp;
-	mii.cch = lstrlen(mii.dwTypeData);
+	mii.cch = wcslen(mii.dwTypeData);
 	if (m_cntOfHWnd > 1)
 	{
 	    hmenu = hSubMenu;
@@ -757,9 +783,12 @@ STDMETHODIMP CShellExt::QueryContextMenu(HMENU hMenu,
 	    hmenu = hMenu;
 	    index = indexMenu++;
 	}
-	InsertMenuItem(hmenu, index, TRUE, &mii);
+	InsertMenuItemW(hmenu, index, TRUE, &mii);
     }
     // InsertMenu(hMenu, indexMenu++, MF_SEPARATOR|MF_BYPOSITION, 0, NULL);
+
+    // Restore previous codeset.
+    restore_gettext_codeset(prev);
 
     // Must return number of menu items we added.
     return ResultFromShort(idCmd-idCmdFirst);
@@ -783,6 +812,7 @@ STDMETHODIMP CShellExt::QueryContextMenu(HMENU hMenu,
 STDMETHODIMP CShellExt::InvokeCommand(LPCMINVOKECOMMANDINFO lpcmi)
 {
     HRESULT hr = E_INVALIDARG;
+    int gvimExtraOptions;
 
     // If HIWORD(lpcmi->lpVerb) then we have been called programmatically
     // and lpVerb is a command that should be invoked.  Otherwise, the shell
@@ -807,29 +837,32 @@ STDMETHODIMP CShellExt::InvokeCommand(LPCMINVOKECOMMANDINFO lpcmi)
 	    switch (idCmd)
 	    {
 		case 0:
-		    hr = InvokeGvim(lpcmi->hwnd,
-			    lpcmi->lpDirectory,
-			    lpcmi->lpVerb,
-			    lpcmi->lpParameters,
-			    lpcmi->nShow);
+		    gvimExtraOptions = EDIT_WITH_VIM_USE_TABPAGES;
 		    break;
 		case 1:
-		    hr = InvokeSingleGvim(lpcmi->hwnd,
-			    lpcmi->lpDirectory,
-			    lpcmi->lpVerb,
-			    lpcmi->lpParameters,
-			    lpcmi->nShow,
-			    0);
+		    gvimExtraOptions = EDIT_WITH_VIM_NO_OPTIONS;
 		    break;
 		case 2:
-		    hr = InvokeSingleGvim(lpcmi->hwnd,
-			    lpcmi->lpDirectory,
-			    lpcmi->lpVerb,
-			    lpcmi->lpParameters,
-			    lpcmi->nShow,
-			    1);
+		    gvimExtraOptions = EDIT_WITH_VIM_IN_DIFF_MODE;
 		    break;
+		default:
+		    // If execution reaches this point we likely have an
+		    // inconsistency between the code that setup the menus
+		    // and this code that determines what the user
+		    // selected.  This should be detected and fixed during 
+		    // development.
+		    return E_FAIL;
 	    }
+
+            LPCMINVOKECOMMANDINFOEX lpcmiex = (LPCMINVOKECOMMANDINFOEX)lpcmi;
+            LPCWSTR currentDirectory = lpcmi->cbSize == sizeof(CMINVOKECOMMANDINFOEX) ? lpcmiex->lpDirectoryW : NULL;
+
+	    hr = InvokeSingleGvim(lpcmi->hwnd,
+		    currentDirectory,
+		    lpcmi->lpVerb,
+		    lpcmi->lpParameters,
+		    lpcmi->nShow,
+		    gvimExtraOptions);
 	}
     }
     return hr;
@@ -863,8 +896,16 @@ STDMETHODIMP CShellExt::GetCommandString(UINT_PTR  /* idCmd */,
 					 LPSTR pszName,
 					 UINT cchMax)
 {
-    if (uFlags == GCS_HELPTEXT && cchMax > 35)
-	lstrcpy(pszName, _("Edits the selected file(s) with Vim"));
+    // Use UTF-8 for gettext.
+    char *prev = set_gettext_codeset();
+
+    WCHAR *s = W(_("Edits the selected file(s) with Vim"));
+    if (uFlags == GCS_HELPTEXTW && cchMax > wcslen(s))
+	wcscpy((WCHAR *)pszName, s);
+    free(s);
+
+    // Restore previous codeset.
+    restore_gettext_codeset(prev);
 
     return NOERROR;
 }
@@ -875,7 +916,8 @@ BOOL CALLBACK CShellExt::EnumWindowsProc(HWND hWnd, LPARAM lParam)
 
     // First do a bunch of check
     // No invisible window
-    if (!IsWindowVisible(hWnd)) return TRUE;
+    if (!IsWindowVisible(hWnd))
+	return TRUE;
     // No child window ???
     // if (GetParent(hWnd)) return TRUE;
     // Class name should be Vim, if failed to get class name, return
@@ -886,7 +928,8 @@ BOOL CALLBACK CShellExt::EnumWindowsProc(HWND hWnd, LPARAM lParam)
 	return TRUE;
     // First check if the number of vim instance exceeds MAX_HWND
     CShellExt *cs = (CShellExt*) lParam;
-    if (cs->m_cntOfHWnd >= MAX_HWND) return TRUE;
+    if (cs->m_cntOfHWnd >= MAX_HWND)
+	return FALSE;	// stop enumeration
     // Now we get the vim window, put it into some kind of array
     cs->m_hWnd[cs->m_cntOfHWnd] = hWnd;
     cs->m_cntOfHWnd ++;
@@ -896,18 +939,18 @@ BOOL CALLBACK CShellExt::EnumWindowsProc(HWND hWnd, LPARAM lParam)
 
 BOOL CShellExt::LoadMenuIcon()
 {
-	char vimExeFile[BUFSIZE];
-	getGvimName(vimExeFile, 1);
-	if (vimExeFile[0] == '\0')
-		return FALSE;
-	HICON hVimIcon;
-	if (ExtractIconEx(vimExeFile, 0, NULL, &hVimIcon, 1) == 0)
-		return FALSE;
-	m_hVimIconBitmap = IconToBitmap(hVimIcon,
-		GetSysColorBrush(COLOR_MENU),
-		GetSystemMetrics(SM_CXSMICON),
-		GetSystemMetrics(SM_CYSMICON));
-	return TRUE;
+    char vimExeFile[BUFSIZE];
+    getGvimName(vimExeFile, 1);
+    if (vimExeFile[0] == '\0')
+	return FALSE;
+    HICON hVimIcon;
+    if (ExtractIconEx(vimExeFile, 0, NULL, &hVimIcon, 1) == 0)
+	return FALSE;
+    m_hVimIconBitmap = IconToBitmap(hVimIcon,
+	    GetSysColorBrush(COLOR_MENU),
+	    GetSystemMetrics(SM_CXSMICON),
+	    GetSystemMetrics(SM_CYSMICON));
+    return TRUE;
 }
 
     static char *
@@ -930,82 +973,13 @@ searchpath(char *name)
     return (char *)"";
 }
 
-STDMETHODIMP CShellExt::InvokeGvim(HWND hParent,
-				   LPCSTR  /* pszWorkingDir */,
-				   LPCSTR  /* pszCmd */,
-				   LPCSTR  /* pszParam */,
-				   int  /* iShowCmd */)
-{
-    wchar_t m_szFileUserClickedOn[BUFSIZE];
-    wchar_t cmdStrW[BUFSIZE];
-    UINT i;
-
-    for (i = 0; i < cbFiles; i++)
-    {
-	DragQueryFileW((HDROP)medium.hGlobal,
-		i,
-		m_szFileUserClickedOn,
-		sizeof(m_szFileUserClickedOn));
-
-	getGvimInvocationW(cmdStrW);
-	wcscat(cmdStrW, L" \"");
-
-	if ((wcslen(cmdStrW) + wcslen(m_szFileUserClickedOn) + 2) < BUFSIZE)
-	{
-	    wcscat(cmdStrW, m_szFileUserClickedOn);
-	    wcscat(cmdStrW, L"\"");
-
-	    STARTUPINFOW si;
-	    PROCESS_INFORMATION pi;
-
-	    ZeroMemory(&si, sizeof(si));
-	    si.cb = sizeof(si);
-
-	    // Start the child process.
-	    if (!CreateProcessW(NULL,	// No module name (use command line).
-			cmdStrW,	// Command line.
-			NULL,		// Process handle not inheritable.
-			NULL,		// Thread handle not inheritable.
-			FALSE,		// Set handle inheritance to FALSE.
-			oldenv == NULL ? 0 : CREATE_UNICODE_ENVIRONMENT,
-			oldenv,		// Use unmodified environment block.
-			NULL,		// Use parent's starting directory.
-			&si,		// Pointer to STARTUPINFO structure.
-			&pi)		// Pointer to PROCESS_INFORMATION structure.
-	       )
-	    {
-		MessageBox(
-		    hParent,
-		    _("Error creating process: Check if gvim is in your path!"),
-		    _("gvimext.dll error"),
-		    MB_OK);
-	    }
-	    else
-	    {
-		CloseHandle( pi.hProcess );
-		CloseHandle( pi.hThread );
-	    }
-	}
-	else
-	{
-	    MessageBox(
-		hParent,
-		_("Path length too long!"),
-		_("gvimext.dll error"),
-		MB_OK);
-	}
-    }
-
-    return NOERROR;
-}
-
 
 STDMETHODIMP CShellExt::InvokeSingleGvim(HWND hParent,
-				   LPCSTR  /* pszWorkingDir */,
+				   LPCWSTR  workingDir,
 				   LPCSTR  /* pszCmd */,
 				   LPCSTR  /* pszParam */,
 				   int  /* iShowCmd */,
-				   int useDiff)
+				   int gvimExtraOptions)
 {
     wchar_t	m_szFileUserClickedOn[BUFSIZE];
     wchar_t	*cmdStrW;
@@ -1019,8 +993,10 @@ STDMETHODIMP CShellExt::InvokeSingleGvim(HWND hParent,
 	return E_FAIL;
     getGvimInvocationW(cmdStrW);
 
-    if (useDiff)
+    if (gvimExtraOptions == EDIT_WITH_VIM_IN_DIFF_MODE)
 	wcscat(cmdStrW, L" -d");
+    else if (gvimExtraOptions == EDIT_WITH_VIM_USE_TABPAGES)
+	wcscat(cmdStrW, L" -p");
     for (i = 0; i < cbFiles; i++)
     {
 	DragQueryFileW((HDROP)medium.hGlobal,
@@ -1057,18 +1033,26 @@ STDMETHODIMP CShellExt::InvokeSingleGvim(HWND hParent,
 		NULL,		// Process handle not inheritable.
 		NULL,		// Thread handle not inheritable.
 		FALSE,		// Set handle inheritance to FALSE.
-		oldenv == NULL ? 0 : CREATE_UNICODE_ENVIRONMENT,
-		oldenv,		// Use unmodified environment block.
-		NULL,		// Use parent's starting directory.
+		0,		// No creation flags.
+		NULL,		// Use parent's environment block.
+		workingDir,	// Use parent's starting directory.
 		&si,		// Pointer to STARTUPINFO structure.
 		&pi)		// Pointer to PROCESS_INFORMATION structure.
        )
     {
-	MessageBox(
-	    hParent,
-	    _("Error creating process: Check if gvim is in your path!"),
-	    _("gvimext.dll error"),
-	    MB_OK);
+	// Use UTF-8 for gettext.
+	char *prev = set_gettext_codeset();
+
+	WCHAR *msg = W(_("Error creating process: Check if gvim is in your path!"));
+	WCHAR *title = W(_("gvimext.dll error"));
+
+	MessageBoxW(hParent, msg, title, MB_OK);
+
+	free(msg);
+	free(title);
+
+	// Restore previous codeset.
+	restore_gettext_codeset(prev);
     }
     else
     {

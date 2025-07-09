@@ -38,18 +38,18 @@ func Test_if()
     call assert_true(false, 'one in string is true')
   endif
 
-  call assert_fails('if [1]', 'E745')
-  call assert_fails('if {1: 1}', 'E728')
-  call assert_fails('if function("string")', 'E703')
-  call assert_fails('if 1.3")', 'E805')
+  call assert_fails('if [1]', 'E745:')
+  call assert_fails('if {1: 1}', 'E728:')
+  call assert_fails('if function("string")', 'E703:')
+  call assert_fails('if 1.3")', 'E805:')
 endfunc
 
 function Try_arg_true_false(expr, false_val, true_val)
-  for v in ['v:false', '0', '"0"', '"foo"', '" "'] 
+  for v in ['v:false', '0', '"0"', '"foo"', '" "']
     let r = eval(substitute(a:expr, '%v%', v, ''))
     call assert_equal(a:false_val, r, 'result for ' . v . ' is not ' . string(a:false_val) . ' but ' . string(r))
   endfor
-  for v in ['v:true', '1', '"1"', '"1foo"'] 
+  for v in ['v:true', '1', '"1"', '"1foo"']
     let r = eval(substitute(a:expr, '%v%', v, ''))
     call assert_equal(a:true_val, r, 'result for ' . v . ' is not ' . string(a:true_val) . ' but ' . string(r))
   endfor
@@ -100,7 +100,7 @@ func Test_true_false_arg()
   call Try_arg_true_false('maparg("asdf", "i", %v%)', "", "asdff")
   call Try_arg_true_false('FilterMapArg(maparg("asdf", "i", 1, %v%))', "asdff", {'rhs': 'asdff'})
 
-  call Try_arg_true_false('hasmapto("asdf", "i", %v%)', 0, 1)
+  call Try_arg_true_false('"asdf"->hasmapto("i", %v%)', 0, 1)
 
   new colored
   call setline(1, '<here>')
@@ -113,11 +113,11 @@ func Test_true_false_arg()
 endfunc
 
 function Try_arg_non_zero(expr, false_val, true_val)
-  for v in ['v:false', '0', '[1]', '{2:3}', '3.4'] 
+  for v in ['v:false', '0', '[1]', '{2:3}', '3.4']
     let r = eval(substitute(a:expr, '%v%', v, ''))
     call assert_equal(a:false_val, r, 'result for ' . v . ' is not ' . a:false_val . ' but ' . r)
   endfor
-  for v in ['v:true', '1', '" "', '"0"'] 
+  for v in ['v:true', '1', '" "', '"0"']
     let r = eval(substitute(a:expr, '%v%', v, ''))
     call assert_equal(a:true_val, r, 'result for ' . v . ' is not ' . a:true_val . ' but ' . r)
   endfor
@@ -133,14 +133,14 @@ func Test_non_zero_arg()
   call Try_arg_non_zero("shellescape('foo%', %v%)", "'foo%'", "'foo\\%'")
 
   " visualmode() needs to be called twice to check
-  for v in [v:false, 0, [1], {2:3}, 3.4] 
+  for v in [v:false, 0, [1], {2:3}, 3.4]
     normal vv
     let r = visualmode(v)
     call assert_equal('v', r, 'result for ' . string(v) . ' is not "v" but ' . r)
     let r = visualmode(v)
     call assert_equal('v', r, 'result for ' . string(v) . ' is not "v" but ' . r)
   endfor
-  for v in [v:true, 1, " ", "0"] 
+  for v in [v:true, 1, " ", "0"]
     normal vv
     let r = visualmode(v)
     call assert_equal('v', r, 'result for ' . v . ' is not "v" but ' . r)
@@ -148,3 +148,5 @@ func Test_non_zero_arg()
     call assert_equal('', r, 'result for ' . v . ' is not "" but ' . r)
   endfor
 endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

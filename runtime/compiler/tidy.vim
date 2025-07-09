@@ -1,19 +1,22 @@
 " Vim compiler file
 " Compiler:	HTML Tidy
 " Maintainer:	Doug Kearns <dougkearns@gmail.com>
-" Last Change:	2016 Apr 21
+" Last Change:	2024 Apr 03
 
 if exists("current_compiler")
   finish
 endif
 let current_compiler = "tidy"
 
-if exists(":CompilerSet") != 2		" older Vim always used :setlocal
-  command -nargs=* CompilerSet setlocal <args>
-endif
+let s:cpo_save = &cpo
+set cpo&vim
 
-CompilerSet makeprg=tidy\ -quiet\ -errors\ --gnu-emacs\ yes\ %:S
+CompilerSet makeprg=tidy\ -quiet\ -errors\ --gnu-emacs\ yes
+CompilerSet errorformat=%f:%l:%c:\ %trror:\ %m,
+		       \%f:%l:%c:\ %tarning:\ %m,
+		       \%f:%l:%c:\ %tnfo:\ %m,
+		       \%f:%l:%c:\ %m,
+		       \%-G%.%#
 
-" foo.html:8:1: Warning: inserting missing 'foobar' element
-" foo.html:9:2: Error: <foobar> is not recognized!
-CompilerSet errorformat=%f:%l:%c:\ %trror:%m,%f:%l:%c:\ %tarning:%m,%-G%.%#
+let &cpo = s:cpo_save
+unlet s:cpo_save

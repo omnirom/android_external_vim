@@ -1,11 +1,6 @@
 " *-register (quotestar) tests
 
-source shared.vim
-if !WorkingClipboard()
-  finish
-endif
-
-source shared.vim
+CheckFeature clipboard_working
 
 func Do_test_quotestar_for_macunix()
   if empty(exepath('pbcopy')) || empty(exepath('pbpaste'))
@@ -38,7 +33,7 @@ func Do_test_quotestar_for_x11()
 
   let cmd = GetVimCommand()
   if cmd == ''
-    return 'GetVimCommand() failed'
+    throw 'GetVimCommand() failed'
   endif
   try
     call remote_send('xxx', '')
@@ -100,16 +95,18 @@ func Do_test_quotestar_for_x11()
 
     " Running in a terminal and the GUI is available: Tell the server to open
     " the GUI and check that the remote command still works.
-    " Need to wait for the GUI to start up, otherwise the send hangs in trying
-    " to send to the terminal window.
-    if has('gui_athena') || has('gui_motif')
+    if has('gui_motif')
       " For those GUIs, ignore the 'failed to create input context' error.
       call remote_send(name, ":call test_ignore_error('E285') | gui -f\<CR>")
     else
       call remote_send(name, ":gui -f\<CR>")
     endif
     " Wait for the server in the GUI to be up and answering requests.
-    call WaitForAssert({-> assert_match("1", remote_expr(name, "has('gui_running')", "", 1))})
+    " First need to wait for the GUI to start up, otherwise the send hangs in
+    " trying to send to the terminal window.
+    " On some systems and with valgrind this can be very slow.
+    sleep 1
+    call WaitForAssert({-> assert_match("1", remote_expr(name, "has('gui_running')", "", 1))}, 10000)
 
     call remote_send(name, ":let @* = 'maybe'\<CR>")
     call WaitForAssert({-> assert_equal("maybe", remote_expr(name, "@*", "", 2))})
@@ -131,6 +128,7 @@ func Do_test_quotestar_for_x11()
 endfunc
 
 func Test_quotestar()
+  let g:test_is_flaky = 1
   let skipped = ''
 
   let quotestar_saved = @*
@@ -138,8 +136,8 @@ func Test_quotestar()
   if has('macunix')
     let skipped = Do_test_quotestar_for_macunix()
   elseif has('x11')
-    if empty($DISPLAY)
-      let skipped = "Test can only run when $DISPLAY is set."
+    if empty($DISPLAY) || !empty($WAYLAND_DISPLAY)
+      let skipped = "Test can only run when $DISPLAY is set and $WAYLAND_DISPLAY is not set."
     else
       let skipped = Do_test_quotestar_for_x11()
     endif
@@ -153,3 +151,5 @@ func Test_quotestar()
     throw 'Skipped: ' . skipped
   endif
 endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

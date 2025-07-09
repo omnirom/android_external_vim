@@ -3,9 +3,28 @@
 " Errors are appended to the test.log file.
 "
 " To execute only specific test functions, add a second argument.  It will be
-" matched against the names of the Test_ funtion.  E.g.:
+" matched against the names of the Test_ function.  E.g.:
 "	../vim -u NONE -S runtest.vim test_channel.vim open_delay
 " The output can be found in the "messages" file.
+"
+" If the environment variable $TEST_FILTER is set then only test functions
+" matching this pattern are executed.  E.g. for sh/bash:
+"     export TEST_FILTER=Test_channel
+" For csh:
+"     setenv TEST_FILTER Test_channel
+"
+" If the environment variable $TEST_SKIP_PAT is set then test functions
+" matching this pattern will be skipped.  It's the opposite of $TEST_FILTER.
+"
+" While working on a test you can make $TEST_NO_RETRY non-empty to not retry:
+"     export TEST_NO_RETRY=yes
+"
+" To ignore failure for tests that are known to fail in a certain environment,
+" set $TEST_MAY_FAIL to a comma separated list of function names.  E.g. for
+" sh/bash:
+"     export TEST_MAY_FAIL=Test_channel_one,Test_channel_other
+" The failure report will then not be included in the test.log file and
+" "make test" will not fail.
 "
 " The test script may contain anything, only functions that start with
 " "Test_" are special.  These will be invoked and should contain assert
@@ -30,24 +49,65 @@
 
 
 " Without the +eval feature we can't run these tests, bail out.
-so small.vim
+silent! while 0
+  qa!
+silent! endwhile
+
+" In the GUI we can always change the screen size.
+if has('gui_running')
+  if has('gui_gtk')
+    " Use e.g. SetUp() and TearDown() to change "&guifont" when needed;
+    " otherwise, keep the following value to match current screendumps.
+    set guifont=Monospace\ 10
+  endif
+
+  func s:SetDefaultOptionsForGUIBuilds()
+    set columns=80 lines=25
+  endfunc
+else
+  func s:SetDefaultOptionsForGUIBuilds()
+  endfunc
+endif
 
 " Check that the screen size is at least 24 x 80 characters.
-if &lines < 24 || &columns < 80 
-  let error = 'Screen size too small! Tests require at least 24 lines with 80 characters'
+if &lines < 24 || &columns < 80
+  let error = 'Screen size too small! Tests require at least 24 lines with 80 characters, got ' .. &lines .. ' lines with ' .. &columns .. ' characters'
   echoerr error
   split test.log
   $put =error
-  w
-  cquit
+  write
+  split messages
+  call append(line('$'), '')
+  call append(line('$'), 'From ' . expand('%') . ':')
+  call append(line('$'), error)
+  write
+  qa!
 endif
 
 if has('reltime')
-  let s:start_time = reltime()
+  let s:run_start_time = reltime()
+
+  if !filereadable('starttime')
+    " first test, store the overall test starting time
+    let s:test_start_time = localtime()
+    call writefile([string(s:test_start_time)], 'starttime')
+  else
+    " second or later test, read the overall test starting time
+    let s:test_start_time = readfile('starttime')[0]->str2nr()
+  endif
 endif
 
+" Always use forward slashes.
+set shellslash
+
 " Common with all tests on all systems.
-source setup.vim
+source util/setup.vim
+
+" Needed for RunningWithValgrind().
+source util/shared.vim
+
+" Needed for the various Check commands
+source util/check.vim
 
 " For consistency run all tests with 'nocompatible' set.
 " This also enables use of line continuation.
@@ -62,13 +122,29 @@ set encoding=utf-8
 " REDIR_TEST_TO_NULL has a very permissive SwapExists autocommand which is for
 " the test_name.vim file itself. Replace it here with a more restrictive one,
 " so we still catch mistakes.
-let s:test_script_fname = expand('%')
+if has("win32")
+  " replace any '/' directory separators by '\\'
+  let s:test_script_fname = substitute(expand('%'), '/', '\\', 'g')
+else
+  let s:test_script_fname = expand('%')
+endif
+
 au! SwapExists * call HandleSwapExists()
 func HandleSwapExists()
-  " Only ignore finding a swap file for the test script (the user might be
+  if exists('g:ignoreSwapExists')
+    if type(g:ignoreSwapExists) == v:t_string
+      let v:swapchoice = g:ignoreSwapExists
+    endif
+    return
+  endif
+  " Ignore finding a swap file for the test script (the user might be
   " editing it and do ":make test_name") and the output file.
+  " Report finding another swap file and chose 'q' to avoid getting stuck.
   if expand('<afile>') == 'messages' || expand('<afile>') =~ s:test_script_fname
     let v:swapchoice = 'e'
+  else
+    call assert_report('Unexpected swap file: ' .. v:swapname)
+    let v:swapchoice = 'q'
   endif
 endfunc
 
@@ -78,13 +154,41 @@ set nomore
 " Output all messages in English.
 lang mess C
 
-" Always use forward slashes.
-set shellslash
+" suppress menu translation
+if has('gui_running') && exists('did_install_default_menus')
+  source $VIMRUNTIME/delmenu.vim
+  set langmenu=none
+  source $VIMRUNTIME/menu.vim
+endif
 
 let s:srcdir = expand('%:p:h:h')
 
+if has('win32')
+  " avoid prompt that is long or contains a line break
+  let $PROMPT = '$P$G'
+  " On MS-Windows t_md and t_me are Vim specific escape sequences.
+  let s:t_bold = "\x1b[1m"
+  let s:t_normal = "\x1b[m"
+else
+  let s:t_bold = &t_md
+  let s:t_normal = &t_me
+endif
+
+if has('mac')
+  " In macOS, when starting a shell in a terminal, a bash deprecation warning
+  " message is displayed. This breaks the terminal test. Disable the warning
+  " message.
+  let $BASH_SILENCE_DEPRECATION_WARNING = 1
+endif
+
+
 " Prepare for calling test_garbagecollect_now().
+" Also avoids some delays in Insert mode completion.
 let v:testing = 1
+
+" By default, copy each buffer line into allocated memory, so that valgrind can
+" detect accessing memory before and after it.
+call test_override('alloc_lines', 1)
 
 " Support function: get the alloc ID by name.
 function GetAllocId(name)
@@ -101,10 +205,61 @@ function GetAllocId(name)
   return lnum - top - 1
 endfunc
 
+" Get the list of swap files in the current directory.
+func s:GetSwapFileList()
+  let save_dir = &directory
+  let &directory = '.'
+  let files = swapfilelist()
+  let &directory = save_dir
+
+  " remove a match with runtest.vim
+  let idx = indexof(files, 'v:val =~ "runtest.vim."')
+  if idx >= 0
+    call remove(files, idx)
+  endif
+
+  return files
+endfunc
+
+" A previous (failed) test run may have left swap files behind.  Delete them
+" before running tests again, they might interfere.
+for name in s:GetSwapFileList()
+  call delete(name)
+endfor
+unlet! name
+
+
+" Invoked when a test takes too much time.
+func TestTimeout(id)
+  split test.log
+  call append(line('$'), '')
+
+  let text = 'Test timed out: ' .. g:testfunc
+  if g:timeout_start > 0
+    let text ..= strftime(' after %s seconds', localtime() - g:timeout_start)
+  endif
+  call append(line('$'), text)
+  write
+  call add(v:errors, text)
+
+  cquit! 42
+endfunc
+let g:timeout_start = 0
+
 func RunTheTest(test)
-  echo 'Executing ' . a:test
+  let prefix = ''
   if has('reltime')
-    let func_start = reltime()
+    let prefix = strftime('%M:%S', localtime() - s:test_start_time) .. ' '
+    let g:func_start = reltime()
+  endif
+  echoconsole prefix .. 'Executing ' .. a:test
+
+  if has('timers')
+    " No test should take longer than 45 seconds.  If it takes longer we
+    " assume we are stuck and need to break out.
+    let test_timeout_timer =
+          \ timer_start(RunningWithValgrind() ? 90000 : 45000, 'TestTimeout')
+    let g:timeout_start = localtime()
   endif
 
   " Avoid stopping at the "hit enter" prompt
@@ -114,16 +269,22 @@ func RunTheTest(test)
   " mode message.
   set noshowmode
 
-  " Clear any overrides.
+  " Clear any overrides, except "alloc_lines".
   call test_override('ALL', 0)
 
   " Some tests wipe out buffers.  To be consistent, always wipe out all
   " buffers.
   %bwipe!
 
+  " Clear all children notifications in case there are stale ones left
+  let g:child_notification = 0
+
   " The test may change the current directory. Save and restore the
   " directory after executing the test.
   let save_cwd = getcwd()
+
+  " Permit "SetUp()" implementations to override default settings.
+  call s:SetDefaultOptionsForGUIBuilds()
 
   if exists("*SetUp")
     try
@@ -133,29 +294,35 @@ func RunTheTest(test)
     endtry
   endif
 
-  let message = 'Executed ' . a:test
-  if has('reltime')
-    let message ..= ' in ' .. reltimestr(reltime(func_start)) .. ' seconds'
-  endif
-  call add(s:messages, message)
-  let s:done += 1
+  let skipped = v:false
 
+  au VimLeavePre * call EarlyExit(g:testfunc)
   if a:test =~ 'Test_nocatch_'
     " Function handles errors itself.  This avoids skipping commands after the
     " error.
+    let g:skipped_reason = ''
     exe 'call ' . a:test
+    if g:skipped_reason != ''
+      call add(s:messages, '    Skipped')
+      call add(s:skipped, 'SKIPPED ' . a:test . ': ' . g:skipped_reason)
+      let skipped = v:true
+    endif
   else
     try
-      let s:test = a:test
-      au VimLeavePre * call EarlyExit(s:test)
       exe 'call ' . a:test
-      au! VimLeavePre
     catch /^\cskipped/
       call add(s:messages, '    Skipped')
       call add(s:skipped, 'SKIPPED ' . a:test . ': ' . substitute(v:exception, '^\S*\s\+', '',  ''))
+      let skipped = v:true
     catch
       call add(v:errors, 'Caught exception in ' . a:test . ': ' . v:exception . ' @ ' . v:throwpoint)
     endtry
+  endif
+  au! VimLeavePre
+
+  if a:test =~ '_terminal_'
+    " Terminal tests sometimes hang, give extra information
+    echoconsole 'After executing ' .. a:test
   endif
 
   " In case 'insertmode' was set and something went wrong, make sure it is
@@ -170,13 +337,34 @@ func RunTheTest(test)
     endtry
   endif
 
-  " Clear any autocommands
+  if has('timers')
+    call timer_stop(test_timeout_timer)
+    let g:timeout_start = 0
+  endif
+
+  " Clear any autocommands and put back the catch-all for SwapExists.
   au!
   au SwapExists * call HandleSwapExists()
 
+  " Check for and close any stray popup windows.
+  if has('popupwin')
+    call assert_equal([], popup_list(), 'Popup is still present')
+    call popup_clear(1)
+  endif
+
+  if filereadable('guidialogfile')
+    call add(v:errors, "Unexpected dialog: " .. readfile('guidialogfile')->join('<NL>'))
+    call delete('guidialogfile')
+  endif
+
   " Close any extra tab pages and windows and make the current one not modified.
   while tabpagenr('$') > 1
+    let winid = win_getid()
     quit!
+    if winid == win_getid()
+      echoerr 'Could not quit window'
+      break
+    endif
   endwhile
 
   while 1
@@ -193,13 +381,88 @@ func RunTheTest(test)
   endwhile
 
   exe 'cd ' . save_cwd
+
+  if a:test =~ '_terminal_'
+    " Terminal tests sometimes hang, give extra information
+    echoconsole 'Finished ' . a:test
+  endif
+
+  let message = 'Executed ' . a:test
+  if has('reltime')
+    let message ..= repeat(' ', 50 - len(message))
+    let time = reltime(g:func_start)
+    if reltimefloat(time) > 0.1
+      let message = s:t_bold .. message
+    endif
+    let message ..= ' in ' .. reltimestr(time) .. ' seconds'
+    if reltimefloat(time) > 0.1
+      let message ..= s:t_normal
+    endif
+  endif
+  call add(s:messages, message)
+  let s:done += 1
+
+  " close any split windows
+  while winnr('$') > 1
+    noswapfile bwipe!
+  endwhile
+
+  " May be editing some buffer, wipe it out.  Then we may end up in another
+  " buffer, continue until we end up in an empty no-name buffer without a swap
+  " file.
+  while bufname() != '' || execute('swapname') !~ 'No swap file'
+    let bn = bufnr()
+
+    noswapfile bwipe!
+
+    if bn == bufnr()
+      " avoid getting stuck in the same buffer
+      break
+    endif
+  endwhile
+
+  if !skipped
+    " Check if the test has left any swap files behind.  Delete them before
+    " running tests again, they might interfere.
+    let swapfiles = s:GetSwapFileList()
+    if len(swapfiles) > 0
+      call add(s:messages, "Found swap files: " .. string(swapfiles))
+      for name in swapfiles
+        call delete(name)
+      endfor
+    endif
+  endif
 endfunc
 
-func AfterTheTest()
+function Delete_Xtest_Files()
+  for file in glob('X*', v:false, v:true)
+    if file ==? 'XfakeHOME'
+      " Clean up files created by setup.vim
+      call delete('XfakeHOME', 'rf')
+      continue
+    endif
+    " call add(v:errors, file .. " exists when it shouldn't, trying to delete it!")
+    call delete(file)
+    if !empty(glob(file, v:false, v:true))
+      " call add(v:errors, file .. " still exists after trying to delete it!")
+      if has('unix')
+        call system('rm -rf  ' .. file)
+      endif
+    endif
+  endfor
+endfunc
+
+func AfterTheTest(func_name)
   if len(v:errors) > 0
-    let s:fail += 1
-    call add(s:errors, 'Found errors in ' . s:test . ':')
-    call extend(s:errors, v:errors)
+    if match(s:may_fail_list, '^' .. a:func_name) >= 0
+      let s:fail_expected += 1
+      call add(s:errors_expected, 'Found errors in ' . g:testfunc . ':')
+      call extend(s:errors_expected, v:errors)
+    else
+      let s:fail += 1
+      call add(s:errors, 'Found errors in ' . g:testfunc . ':')
+      call extend(s:errors, v:errors)
+    endif
     let v:errors = []
   endif
 endfunc
@@ -207,6 +470,7 @@ endfunc
 func EarlyExit(test)
   " It's OK for the test we use to test the quit detection.
   if a:test != 'Test_zz_quit_detected()'
+    call add(v:errors, v:errmsg)
     call add(v:errors, 'Test caused Vim to exit: ' . a:test)
   endif
 
@@ -215,15 +479,13 @@ endfunc
 
 " This function can be called by a test if it wants to abort testing.
 func FinishTesting()
-  call AfterTheTest()
+  call AfterTheTest('')
+  call Delete_Xtest_Files()
 
   " Don't write viminfo on exit.
   set viminfo=
 
-  " Clean up files created by setup.vim
-  call delete('XfakeHOME', 'rf')
-
-  if s:fail == 0
+  if s:fail == 0 && s:fail_expected == 0
     " Success, create the .res file so that make knows it's done.
     exe 'split ' . fnamemodify(g:testname, ':r') . '.res'
     write
@@ -239,12 +501,25 @@ func FinishTesting()
   endif
 
   if s:done == 0
-    let message = 'NO tests executed'
+    if s:filtered > 0
+      if $TEST_FILTER != ''
+        let message = "NO tests match $TEST_FILTER: '" .. $TEST_FILTER .. "'"
+      else
+        let message = "ALL tests match $TEST_SKIP_PAT: '" .. $TEST_SKIP_PAT .. "'"
+      endif
+    else
+      let message = 'NO tests executed'
+    endif
   else
+    if s:filtered > 0
+      call add(s:messages, "Filtered " .. s:filtered .. " tests with $TEST_FILTER and $TEST_SKIP_PAT")
+    endif
     let message = 'Executed ' . s:done . (s:done > 1 ? ' tests' : ' test')
   endif
-  if has('reltime')
-    let message ..= ' in ' .. reltimestr(reltime(s:start_time)) .. ' seconds'
+  if s:done > 0 && has('reltime')
+    let message = s:t_bold .. message .. repeat(' ', 40 - len(message))
+    let message ..= ' in ' .. reltimestr(reltime(s:run_start_time)) .. ' seconds'
+    let message ..= s:t_normal
   endif
   echo message
   call add(s:messages, message)
@@ -254,15 +529,21 @@ func FinishTesting()
     call add(s:messages, message)
     call extend(s:messages, s:errors)
   endif
+  if s:fail_expected > 0
+    let message = s:fail_expected . ' FAILED (matching $TEST_MAY_FAIL):'
+    echo message
+    call add(s:messages, message)
+    call extend(s:messages, s:errors_expected)
+  endif
 
   " Add SKIPPED messages
   call extend(s:messages, s:skipped)
 
-  " Append messages to the file "messages"
+  " Append messages to the file "messages", but remove ANSI Escape sequences
   split messages
   call append(line('$'), '')
   call append(line('$'), 'From ' . g:testname . ':')
-  call append(line('$'), s:messages)
+  call append(line('$'), s:messages->map({_, val -> substitute(val, '\%x1b[[|]\(\d\?\|\d\+\)[hm]', '', 'g')}))
   write
 
   qall!
@@ -273,11 +554,13 @@ endfunc
 let g:testname = expand('%')
 let s:done = 0
 let s:fail = 0
+let s:fail_expected = 0
 let s:errors = []
+let s:errors_expected = []
 let s:messages = []
 let s:skipped = []
 if expand('%') =~ 'test_vimscript.vim'
-  " this test has intentional s:errors, don't use try/catch.
+  " this test has intentional errors, don't use try/catch.
   source %
 else
   try
@@ -291,104 +574,88 @@ else
   endtry
 endif
 
-" Names of flaky tests.
-let s:flaky_tests = [
-      \ 'Test_call()',
-      \ 'Test_channel_handler()',
-      \ 'Test_client_server()',
-      \ 'Test_close_and_exit_cb()',
-      \ 'Test_close_callback()',
-      \ 'Test_close_handle()',
-      \ 'Test_close_lambda()',
-      \ 'Test_close_output_buffer()',
-      \ 'Test_close_partial()',
-      \ 'Test_collapse_buffers()',
-      \ 'Test_communicate()',
-      \ 'Test_cwd()',
-      \ 'Test_diff_screen()',
-      \ 'Test_exit_callback()',
-      \ 'Test_exit_callback_interval()',
-      \ 'Test_nb_basic()',
-      \ 'Test_oneshot()',
-      \ 'Test_open_delay()',
-      \ 'Test_out_cb()',
-      \ 'Test_paused()',
-      \ 'Test_pipe_through_sort_all()',
-      \ 'Test_pipe_through_sort_some()',
-      \ 'Test_popup_and_window_resize()',
-      \ 'Test_quoteplus()',
-      \ 'Test_quotestar()',
-      \ 'Test_raw_one_time_callback()',
-      \ 'Test_reltime()',
-      \ 'Test_repeat_three()',
-      \ 'Test_server_crash()',
-      \ 'Test_terminal_ansicolors_default()',
-      \ 'Test_terminal_ansicolors_func()',
-      \ 'Test_terminal_ansicolors_global()',
-      \ 'Test_terminal_composing_unicode()',
-      \ 'Test_terminal_does_not_truncate_last_newlines()',
-      \ 'Test_terminal_env()',
-      \ 'Test_terminal_hide_buffer()',
-      \ 'Test_terminal_make_change()',
-      \ 'Test_terminal_no_cmd()',
-      \ 'Test_terminal_noblock()',
-      \ 'Test_terminal_redir_file()',
-      \ 'Test_terminal_response_to_control_sequence()',
-      \ 'Test_terminal_scrollback()',
-      \ 'Test_terminal_split_quit()',
-      \ 'Test_terminal_termwinkey()',
-      \ 'Test_terminal_termwinsize_mininmum()',
-      \ 'Test_terminal_termwinsize_option_fixed()',
-      \ 'Test_terminal_termwinsize_option_zero()',
-      \ 'Test_terminal_tmap()',
-      \ 'Test_terminal_wall()',
-      \ 'Test_terminal_wipe_buffer()',
-      \ 'Test_terminal_wqall()',
-      \ 'Test_two_channels()',
-      \ 'Test_unlet_handle()',
-      \ 'Test_with_partial_callback()',
-      \ 'Test_zero_reply()',
-      \ 'Test_zz1_terminal_in_gui()',
-      \ ]
-
-" Pattern indicating a common flaky test failure.
-let s:flaky_errors_re = 'StopVimInTerminal\|VerifyScreenDump'
+" Delete the .res file, it may change behavior for completion
+call delete(fnamemodify(g:testname, ':r') .. '.res')
 
 " Locate Test_ functions and execute them.
 redir @q
 silent function /^Test_
 redir END
-let s:tests = split(substitute(@q, 'function \(\k*()\)', '\1', 'g'))
+let s:tests = split(substitute(@q, '\(function\|def\) \(\k*()\)', '\2', 'g'))
 
 " If there is an extra argument filter the function names against it.
 if argc() > 1
   let s:tests = filter(s:tests, 'v:val =~ argv(1)')
 endif
 
+" If the environment variable $TEST_FILTER is set then filter the function
+" names against it.
+let s:filtered = 0
+if $TEST_FILTER != ''
+  let s:filtered = len(s:tests)
+  let s:tests = filter(s:tests, 'v:val =~ $TEST_FILTER')
+  let s:filtered -= len(s:tests)
+endif
+
+let s:may_fail_list = []
+if $TEST_MAY_FAIL != ''
+  " Split the list at commas and add () to make it match g:testfunc.
+  let s:may_fail_list = split($TEST_MAY_FAIL, ',')->map({i, v -> v .. '()'})
+endif
+
 " Execute the tests in alphabetical order.
-for s:test in sort(s:tests)
+for g:testfunc in sort(s:tests)
+  if $TEST_SKIP_PAT != '' && g:testfunc =~ $TEST_SKIP_PAT
+    call add(s:messages, g:testfunc .. ' matches $TEST_SKIP_PAT')
+    let s:filtered += 1
+    continue
+  endif
+
   " Silence, please!
   set belloff=all
   let prev_error = ''
   let total_errors = []
-  let run_nr = 1
+  let g:run_nr = 1
 
-  call RunTheTest(s:test)
+  " A test can set g:test_is_flaky to retry running the test.
+  let g:test_is_flaky = 0
+
+  let g:check_screendump_called = v:false
+
+  " A test can set g:max_run_nr to change the max retry count.
+  let g:max_run_nr = 5
+  if has('mac')
+    let g:max_run_nr = 10
+  endif
+
+  " By default, give up if the same error occurs.  A test can set
+  " g:giveup_same_error to 0 to not give up on the same error and keep trying.
+  let g:giveup_same_error = 1
+
+  let starttime = strftime("%H:%M:%S")
+  call RunTheTest(g:testfunc)
 
   " Repeat a flaky test.  Give up when:
+  " - $TEST_NO_RETRY is not empty
   " - it fails again with the same message
-  " - it fails five times (with a different mesage)
+  " - it fails five times (with a different message)
   if len(v:errors) > 0
-        \ && (index(s:flaky_tests, s:test) >= 0
-        \      || v:errors[0] =~ s:flaky_errors_re)
+        \ && $TEST_NO_RETRY == ''
+        \ && g:test_is_flaky
     while 1
-      call add(s:messages, 'Found errors in ' . s:test . ':')
+      call add(s:messages, 'Found errors in ' .. g:testfunc .. ':')
       call extend(s:messages, v:errors)
 
-      call add(total_errors, 'Run ' . run_nr . ':')
+      let endtime = strftime("%H:%M:%S")
+      if has('reltime')
+        let suffix = $' in{reltimestr(reltime(g:func_start))} seconds'
+      else
+        let suffix = ''
+      endif
+      call add(total_errors, $'Run {g:run_nr}, {starttime} - {endtime}{suffix}:')
       call extend(total_errors, v:errors)
 
-      if run_nr == 5 || prev_error == v:errors[0]
+      if g:run_nr >= g:max_run_nr || g:giveup_same_error && prev_error == v:errors[0]
         call add(total_errors, 'Flaky test failed too often, giving up')
         let v:errors = total_errors
         break
@@ -399,13 +666,15 @@ for s:test in sort(s:tests)
       " Flakiness is often caused by the system being very busy.  Sleep a
       " couple of seconds to have a higher chance of succeeding the second
       " time.
-      sleep 2
+      let delay = g:run_nr * 2
+      exe 'sleep' delay
 
       let prev_error = v:errors[0]
       let v:errors = []
-      let run_nr += 1
+      let g:run_nr += 1
 
-      call RunTheTest(s:test)
+      let starttime = strftime("%H:%M:%S")
+      call RunTheTest(g:testfunc)
 
       if len(v:errors) == 0
         " Test passed on rerun.
@@ -414,7 +683,7 @@ for s:test in sort(s:tests)
     endwhile
   endif
 
-  call AfterTheTest()
+  call AfterTheTest(g:testfunc)
 endfor
 
 call FinishTesting()

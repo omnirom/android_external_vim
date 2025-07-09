@@ -7,9 +7,13 @@
 
 #if defined(__GNUC__) && !defined(__MINGW32__)
 # define INTERNAL __attribute__((visibility("internal")))
-# define UNUSED __attribute__((unused))
 #else
 # define INTERNAL
+#endif
+
+#if defined(__GNUC__) || defined(__MINGW32__)
+# define UNUSED __attribute__((unused))
+#else
 # define UNUSED
 #endif
 
@@ -32,6 +36,9 @@
 #define CSI_ARGS_MAX 16
 #define CSI_LEADER_MAX 16
 
+#define BUFIDX_PRIMARY   0
+#define BUFIDX_ALTSCREEN 1
+
 typedef struct VTermEncoding VTermEncoding;
 
 typedef struct {
@@ -50,18 +57,12 @@ struct VTermPen
   unsigned int italic:1;
   unsigned int blink:1;
   unsigned int reverse:1;
+  unsigned int conceal:1;
   unsigned int strike:1;
   unsigned int font:4; /* To store 0-9 */
+  unsigned int small:1;
+  unsigned int baseline:2;
 };
-
-int vterm_color_equal(VTermColor a, VTermColor b);
-
-#if defined(DEFINE_INLINES) || USE_INLINE
-INLINE int vterm_color_equal(VTermColor a, VTermColor b)
-{
-  return a.red == b.red && a.green == b.green && a.blue == b.blue;
-}
-#endif
 
 struct VTermState
 {
@@ -70,7 +71,7 @@ struct VTermState
   const VTermStateCallbacks *callbacks;
   void *cbdata;
 
-  const VTermParserCallbacks *fallbacks;
+  const VTermStateFallbacks *fallbacks;
   void *fbdata;
 
   int rows;
@@ -92,6 +93,10 @@ struct VTermState
   /* Bitvector of tab stops */
   unsigned char *tabstops;
 
+  /* Primary and Altscreen; lineinfos[1] is lazily allocated as needed */
+  VTermLineInfo *lineinfos[2];
+
+  /* lineinfo will == lineinfos[0] or lineinfos[1], depending on altscreen */
   VTermLineInfo *lineinfo;
 #define ROWWIDTH(state,row) ((state)->lineinfo[(row)].doublewidth ? ((state)->cols / 2) : (state)->cols)
 #define THISROWWIDTH(state) ROWWIDTH(state, (state)->pos.row)
@@ -124,6 +129,8 @@ struct VTermState
     unsigned int leftrightmargin:1;
     unsigned int bracketpaste:1;
     unsigned int report_focus:1;
+    unsigned int modify_other_keys:1;
+    unsigned int kitty_keyboard:1;
   } mode;
 
   VTermEncodingInstance encoding[4], encoding_utf8;
@@ -135,8 +142,6 @@ struct VTermState
   VTermColor default_bg;
   VTermColor colors[16]; // Store the 8 ANSI and the 8 ANSI high-brights only
 
-  int fg_index;
-  int bg_index;
   int bold_is_highbright;
 
   unsigned int protected_cell : 1;
@@ -152,18 +157,36 @@ struct VTermState
       unsigned int cursor_shape:2;
     } mode;
   } saved;
+
+  /* Temporary state for DECRQSS parsing */
+  union {
+    char decrqss[4];
+    struct {
+      uint16_t mask;
+      enum {
+        SELECTION_INITIAL,
+        SELECTION_SELECTED,
+        SELECTION_QUERY,
+        SELECTION_SET_INITIAL,
+        SELECTION_SET,
+        SELECTION_INVALID,
+      } state : 8;
+      uint32_t recvpartial;
+      uint32_t sendpartial;
+    } selection;
+  } tmp;
+
+  struct {
+    const VTermSelectionCallbacks *callbacks;
+    void *user;
+    char *buffer;
+    size_t buflen;
+  } selection;
 };
-
-typedef enum {
-  VTERM_PARSER_OSC,
-  VTERM_PARSER_DCS,
-
-  VTERM_N_PARSER_TYPES
-} VTermParserStringType;
 
 struct VTerm
 {
-  VTermAllocatorFunctions *allocator;
+  const VTermAllocatorFunctions *allocator;
   void *allocdata;
 
   int rows;
@@ -180,38 +203,62 @@ struct VTerm
       CSI_LEADER,
       CSI_ARGS,
       CSI_INTERMED,
-      ESC,
+      DCS_COMMAND,
       /* below here are the "string states" */
-      STRING,
-      ESC_IN_STRING,
+      OSC_COMMAND,
+      OSC,
+      DCS,
+      APC,
+      PM,
+      SOS,
     } state;
+
+    unsigned int in_esc : 1;
 
     int intermedlen;
     char intermed[INTERMED_MAX];
 
-    int csi_leaderlen;
-    char csi_leader[CSI_LEADER_MAX];
+    union {
+      struct {
+        int leaderlen;
+        char leader[CSI_LEADER_MAX];
 
-    int csi_argi;
-    long csi_args[CSI_ARGS_MAX];
+        int argi;
+        long args[CSI_ARGS_MAX];
+      } csi;
+      struct {
+        int command;
+      } osc;
+      struct {
+        int commandlen;
+        char command[CSI_LEADER_MAX];
+      } dcs;
+    } v;
 
     const VTermParserCallbacks *callbacks;
     void *cbdata;
 
-    VTermParserStringType stringtype;
-    char  *strbuffer;
-    size_t strbuffer_len;
-    size_t strbuffer_cur;
+    int string_initial;
+
+    int emit_nul;
   } parser;
 
   /* len == malloc()ed size; cur == number of valid bytes */
+
+  VTermOutputCallback *outfunc;
+  void                *outdata;
 
   char  *outbuffer;
   size_t outbuffer_len;
   size_t outbuffer_cur;
 
+  char  *tmpbuffer;
+  size_t tmpbuffer_len;
+
   VTermState *state;
   VTermScreen *screen;
+
+  int in_backspace;
 };
 
 struct VTermEncoding {
@@ -233,7 +280,7 @@ void vterm_push_output_bytes(VTerm *vt, const char *bytes, size_t len);
 void vterm_push_output_vsprintf(VTerm *vt, const char *format, va_list args);
 void vterm_push_output_sprintf(VTerm *vt, const char *format, ...);
 void vterm_push_output_sprintf_ctrl(VTerm *vt, unsigned char ctrl, const char *fmt, ...);
-void vterm_push_output_sprintf_dcs(VTerm *vt, const char *fmt, ...);
+void vterm_push_output_sprintf_str(VTerm *vt, unsigned char ctrl, int term, const char *fmt, ...);
 
 void vterm_state_free(VTermState *state);
 
@@ -259,5 +306,27 @@ VTermEncoding *vterm_lookup_encoding(VTermEncodingType type, char designation);
 
 int vterm_unicode_width(uint32_t codepoint);
 int vterm_unicode_is_combining(uint32_t codepoint);
+int vterm_unicode_is_ambiguous(uint32_t codepoint);
+int vterm_get_special_pty_type(void);
+
+#if (defined(_XOPEN_SOURCE) && _XOPEN_SOURCE >= 500) \
+	|| defined(_ISOC99_SOURCE) || defined(_BSD_SOURCE)
+# undef VSNPRINTF
+# define VSNPRINTF vsnprintf
+# undef SNPRINTF
+#else
+# ifdef VSNPRINTF
+// Use a provided vsnprintf() function.
+int VSNPRINTF(char *str, size_t str_m, const char *fmt, va_list ap);
+# endif
+# ifdef SNPRINTF
+// Use a provided snprintf() function.
+int SNPRINTF(char *str, size_t str_m, const char *fmt, ...);
+# endif
+#endif
+#ifndef SNPRINTF
+# define SNPRINTF snprintf
+#endif
+
 
 #endif

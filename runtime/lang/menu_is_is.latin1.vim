@@ -1,7 +1,8 @@
 " Menu Translations:	Icelandic / Íslenska
 " Maintainer:		Jón Arnar Briem <jonbriem@gmail.com>
 " Originally By:	Jón Arnar Briem <jonbriem@gmail.com>
-" Last Change:	Sun, 24 Mar 2019 22:40:00 CEST
+" Last Change:		2024 May 2
+" Original translations
 " vim:set foldmethod=marker tabstop=8:
 
 " Quit when menu translations have already been done.
@@ -22,7 +23,7 @@ endif
 menutrans &File				                        Skrá
 menutrans &Open\.\.\.<Tab>:e		                Opna\.\.\.<Tab>:e
 menutrans Sp&lit-Open\.\.\.<Tab>:sp	                Splitt\ opna\.\.\.<Tab>:sp
-menutrans Open\ Tab\.\.\.<Tab>:tabnew	            Opna\ flipa\.\.\.<Tab>:tabnew
+menutrans Open\ &Tab\.\.\.<Tab>:tabnew	            Opna\ flipa\.\.\.<Tab>:tabnew
 menutrans &New<Tab>:enew		                    Ný\ Skrá<Tab>:enew
 menutrans &Close<Tab>:close		                    Loka<Tab>:close
 menutrans &Save<Tab>:w			                    Vista<Tab>:w
@@ -59,7 +60,7 @@ menutrans Startup\ &Settings				        Ræsistillingar
 
 menutrans Toggle\ Pattern\ &Highlight<Tab>:set\ hls!	    Munsturauðkenning\ á\/af<Tab>:set\ hls!
 menutrans Toggle\ &Ignoring\ Case<Tab>:set\ ic!		        Hunsa\ há-lágstafi\ á\/af<Tab>:set\ ic!
-menutrans Toggle\ &Showing\ Matched\ Pairs<Tab>:set\ sm!	Sýna\ Pörun á\/af<Tab>:set\ sm!
+menutrans Toggle\ &Showing\ Matched\ Pairs<Tab>:set\ sm!	Sýna\ Pörun\ á\/af<Tab>:set\ sm!
 
 menutrans &Context\ lines				            Samhengislínur
 
@@ -70,7 +71,7 @@ menutrans Insert\ mode					            Innskotshamur
 menutrans Block\ and\ Insert				        Bálkval\ og\ Innskotshamur
 menutrans Always					                Alltaf
 menutrans Toggle\ Insert\ &Mode<Tab>:set\ im!		Innskotshamur\ á\/af<Tab>:set\ im!
-menutrans Toggle\ Vi\ C&ompatibility<Tab>:set\ cp!	Vi\ Samhæfanleiki á\/af<Tab>:set\ cp!
+menutrans Toggle\ Vi\ C&ompatibility<Tab>:set\ cp!	Vi\ Samhæfanleiki\ á\/af<Tab>:set\ cp!
 
 menutrans Search\ &Path\.\.\.				        Leita\ í\ Slóð\.\.\.
 menutrans Ta&g\ Files\.\.\.				            Merkja\ Skrár\.\.\.
@@ -90,7 +91,7 @@ menutrans Toggle\ &List\ Mode<Tab>:set\ list!			Listahamur\ á\/af<Tab>:set\ list
 menutrans Toggle\ Line\ &Wrapping<Tab>:set\ wrap!		Línuhlaup\ á\/af<Tab>:set\ wrap!
 menutrans Toggle\ W&rapping\ at\ word<Tab>:set\ lbr!	Línuhlaup\ á\ orði\ á\/af<Tab>:set\ lbr!
 menutrans Toggle\ Tab\ &Expanding<Tab>:set\ et!			Tab-víkkun\ á\/af<Tab>:set\ et!
-menutrans Toggle\ &Auto Indenting<Tab>:set\ ai!			Sjálfvirkur\ Inndráttur\ á\/af<Tab>:set\ ai!
+menutrans Toggle\ &Auto\ Indenting<Tab>:set\ ai!			Sjálfvirkur\ Inndráttur\ á\/af<Tab>:set\ ai!
 menutrans Toggle\ &C-Style\ Indenting<Tab>:set\ cin!	C-Inndráttur\ á\/af<Tab>:set\ cin!
 
 " other options
@@ -300,6 +301,7 @@ let g:menutrans_tags_dialog =                       "Sláið inn nafn Merkjaskráa.
 let g:menutrans_textwidth_dialog =                  "Sláið inn nýja textabreidd (0 til að óvirkja sniðmátun): "
 let g:menutrans_fileformat_dialog =                 "Veljið Skráarsnið"
 " }}}
+menutrans &Show\ File\ Types\ in\ menu		Sýna\ skráargerðir\ í\ valmyndinni
 
 let &cpo = s:keepcpo
 unlet s:keepcpo

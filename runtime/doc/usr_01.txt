@@ -1,4 +1,4 @@
-*usr_01.txt*	For Vim version 8.1.  Last change: 2017 Jul 15
+*usr_01.txt*	For Vim version 9.1.  Last change: 2024 Dec 17
 
 		     VIM USER MANUAL - by Bram Moolenaar
 
@@ -41,11 +41,11 @@ the commands and options used for it.  Use these two commands:
 	Press  CTRL-O  to jump back (repeat to go further back).
 
 Many links are in vertical bars, like this: |bars|.  The bars themselves may
-be hidden or invisible, see below.  An option name, like 'number', a command
+be hidden or invisible; see below.  An option name, like 'number', a command
 in double quotes like ":write" and any other word can also be used as a link.
 Try it out: Move the cursor to  CTRL-]  and press CTRL-] on it.
 
-Other subjects can be found with the ":help" command, see |help.txt|.
+Other subjects can be found with the ":help" command; see |help.txt|.
 
 The bars and stars are usually hidden with the |conceal| feature.  They also
 use |hl-Ignore|, using the same color for the text as the background.  You can
@@ -71,7 +71,7 @@ you are using:
 
 Unix: >
 	:!cp -i $VIMRUNTIME/vimrc_example.vim ~/.vimrc
-MS-DOS, MS-Windows, OS/2: >
+MS-Windows: >
 	:!copy $VIMRUNTIME/vimrc_example.vim $VIM/_vimrc
 Amiga: >
 	:!copy $VIMRUNTIME/vimrc_example.vim $VIM/.vimrc
@@ -101,25 +101,31 @@ For more info see |vimrc| and |compatible-default|.
 	alternative called "evim" (easy Vim).  This is still Vim, but used in
 	a way that resembles a click-and-type editor like Notepad.  It always
 	stays in Insert mode, thus it feels very different.  It is not
-	explained in the user manual, since it should be mostly self
-	explanatory.  See |evim-keys| for details.
+	explained in the user manual, since it should be mostly
+	self-explanatory.  See |evim-keys| for details.
 
 ==============================================================================
 *01.3*	Using the Vim tutor				*tutor* *vimtutor*
 
+For the interactive tutor, see |vim-tutor-mode|
+
 Instead of reading the text (boring!) you can use the vimtutor to learn your
-first Vim commands.  This is a 30 minute tutorial that teaches the most basic
-Vim functionality hands-on.
+first Vim commands.  This is a 30-minute tutorial provided in 2 chapters, that
+teaches the most basic Vim functionality hands-on.
 
 On Unix, if Vim has been properly installed, you can start it from the shell:
 >
 	vimtutor
 
-On MS-Windows you can find it in the Program/Vim menu.  Or execute
-vimtutor.bat in the $VIMRUNTIME directory.
+On MS-Windows you can find it in the "Program/Vim 9.1" menu.  Or execute
+vimtutor.bat from the installation directory (You can use `:echo $VIMRUNTIME`
+from within Vim to find this directory).
 
-This will make a copy of the tutor file, so that you can edit it without
-the risk of damaging the original.
+This will make a copy of chapter 1 tutor file, so that you can edit it without
+the risk of damaging the original.  To continue with chapter 2, you can use
+the following command: >
+	vimtutor -c 2
+<
    There are a few translated versions of the tutor.  To find out if yours is
 available, use the two-letter language code.  For French: >
 
@@ -140,13 +146,13 @@ On other systems, you have to do a little work:
 
 1. Copy the tutor file.  You can do this with Vim (it knows where to find it):
 >
-	vim --clean -c 'e $VIMRUNTIME/tutor/tutor' -c 'w! TUTORCOPY' -c 'q'
+	vim --clean -c 'e $VIMRUNTIME/tutor/tutor1' -c 'w! TUTORCOPY' -c 'q'
 <
    This will write the file "TUTORCOPY" in the current directory.  To use a
 translated version of the tutor, append the two-letter language code to the
 filename.  For French:
 >
-	vim --clean -c 'e $VIMRUNTIME/tutor/tutor.fr' -c 'w! TUTORCOPY' -c 'q'
+	vim --clean -c 'e $VIMRUNTIME/tutor/tutor1.fr' -c 'w! TUTORCOPY' -c 'q'
 <
 2. Edit the copied file with Vim:
 >
@@ -161,11 +167,11 @@ filename.  For French:
 ==============================================================================
 *01.4*	Copyright					*manual-copyright*
 
-The Vim user manual and reference manual are Copyright (c) 1988-2003 by Bram
+The Vim user manual and reference manual are Copyright (c) 1988 by Bram
 Moolenaar.  This material may be distributed only subject to the terms and
 conditions set forth in the Open Publication License, v1.0 or later.  The
 latest version is presently available at:
-	     http://www.opencontent.org/openpub/
+	     https://opencontent.org/openpub/
 
 People who contribute to the manuals must agree with the above copyright
 notice.

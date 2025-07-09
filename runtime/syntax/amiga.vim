@@ -1,9 +1,10 @@
 " Vim syntax file
 " Language:	AmigaDos
-" Maintainer:	Charles E. Campbell <NdrOchipS@PcampbellAfamily.Mbiz>
+" Maintainer:	This runtime file is looking for a new maintainer.
+" Former Maintainer: Charles E. Campbell
 " Last Change:	Aug 31, 2016
-" Version:     9
-" URL:	http://www.drchip.org/astronaut/vim/index.html#SYNTAX_AMIGA
+" Version:     10
+" Former URL:	http://www.drchip.org/astronaut/vim/index.html#SYNTAX_AMIGA
 
 " quit when a syntax file was already loaded
 if exists("b:current_syntax")

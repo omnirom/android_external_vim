@@ -184,7 +184,7 @@ int main( int argc, char *argv[] )
 	  case COMPILER_GCC:
 	    Severity = 'e';
 #ifdef GOTO_FROM_WHERE_INCLUDED
-	    rv = sscanf( Line, "In file included from %[^:]:%u:",
+	    rv = sscanf( Line, "In file included from %[^:]:%lu:",
 			       FileName, &Row );
 	    if ( rv == 2 )
 	      {
@@ -193,11 +193,11 @@ int main( int argc, char *argv[] )
 	    else
 #endif
 	      {
-		if ((rv = sscanf( Line, "%[^:]:%u: warning: %[^\n]",
+		if ((rv = sscanf( Line, "%[^:]:%lu: warning: %[^\n]",
 				   FileName, &Row, Reason ))==3) {
 		 Severity = 'w';
 		} else {
-		rv = sscanf( Line, "%[^:]:%u: %[^\n]",
+		rv = sscanf( Line, "%[^:]:%lu: %[^\n]",
 				   FileName, &Row, Reason );
 		}
 		ok = ( rv == 3 );
@@ -205,24 +205,24 @@ int main( int argc, char *argv[] )
 	    Col = (dec_col ? 1 : 0 );
 	    break;
 	  case COMPILER_AIX:
-	    rv = sscanf( Line, "\"%[^\"]\", line %u.%u: %*s (%c) %[^\n]",
+	    rv = sscanf( Line, "\"%[^\"]\", line %lu.%lu: %*s (%c) %[^\n]",
 			       FileName, &Row, &Col, &Severity, Reason );
 	    ok = ( rv == 5 );
 	    break;
 	  case COMPILER_HPUX:
-	    rv = sscanf( Line, "cc: \"%[^\"]\", line %u: %c%*[^:]: %[^\n]",
+	    rv = sscanf( Line, "cc: \"%[^\"]\", line %lu: %c%*[^:]: %[^\n]",
 			       FileName, &Row, &Severity, Reason );
 	    ok = ( rv == 4 );
 	    Col = (dec_col ? 1 : 0 );
 	    break;
 	  case COMPILER_SOLARIS:
-	    rv = sscanf( Line, "\"%[^\"]\", line %u: warning: %[^\n]",
+	    rv = sscanf( Line, "\"%[^\"]\", line %lu: warning: %[^\n]",
 			       FileName, &Row, Reason );
 	    Severity = 'w';
 	    ok = ( rv == 3 );
 	    if ( rv != 3 )
 	      {
-		rv = sscanf( Line, "\"%[^\"]\", line %u: %[^\n]",
+		rv = sscanf( Line, "\"%[^\"]\", line %lu: %[^\n]",
 				   FileName, &Row, Reason );
 		Severity = 'e';
 		ok = ( rv == 3 );
@@ -230,18 +230,18 @@ int main( int argc, char *argv[] )
 	    Col = (dec_col ? 1 : 0 );
 	    break;
 	  case COMPILER_ATT:
-	    rv	 = sscanf( Line, "%c \"%[^\"]\",L%u/C%u%*[^:]:%[^\n]",
+	    rv	 = sscanf( Line, "%c \"%[^\"]\",L%lu/C%lu%*[^:]:%[^\n]",
 				 &Severity, FileName, &Row, &Col, Reason );
 	    ok = ( rv == 5 );
 
 	    if (rv != 5)
-	      { rv   = sscanf( Line, "%c \"%[^\"]\",L%u/C%u: %[^\n]",
+	      { rv   = sscanf( Line, "%c \"%[^\"]\",L%lu/C%lu: %[^\n]",
 				     &Severity, FileName, &Row, &Col, Reason );
 		ok = ( rv == 5 );
 	      }
 
 	    if (rv != 5)
-	      { rv  = sscanf( Line, "%c \"%[^\"]\",L%u: %[^\n]",
+	      { rv  = sscanf( Line, "%c \"%[^\"]\",L%lu: %[^\n]",
 				   &Severity, FileName, &Row, Reason );
 		ok = ( rv == 4 );
 		Col = (dec_col ? 1 : 0 );
@@ -249,7 +249,7 @@ int main( int argc, char *argv[] )
 
 	    stay = (echogets(Line2, echo) != NULL);
 	    while ( stay && (Line2[0] == '|') )
-	      { for (p=&Line2[2]; (*p) && (isspace(*p)); p++);
+	      { for (p=&Line2[2]; (*p) && (isspace((unsigned char)*p)); p++);
 		strcat( Reason, ": " );
 		strcat( Reason, p );
 		Line2[0] = 0;
@@ -265,17 +265,17 @@ int main( int argc, char *argv[] )
 	    ok	      = 0;
 	    if ( !strncmp(Line, "cfe: ", 5) )
 	      { p = &Line[5];
-		Severity = tolower(*p);
+		Severity = tolower((unsigned char)*p);
 		p = strchr( &Line[5], ':' );
 		if (p == NULL)
 		  { ok = 0;
 		  }
 		 else
 		  {
-		    rv = sscanf( p+2, "%[^:]: %u: %[^\n]",
+		    rv = sscanf( p+2, "%[^:]: %lu: %[^\n]",
 				 FileName, &Row, Reason );
 		    if (rv != 3)
-		      rv = sscanf( p+2, "%[^,], line %u: %[^\n]",
+		      rv = sscanf( p+2, "%[^,], line %lu: %[^\n]",
 				   FileName, &Row, Reason );
 		    ok = ( rv == 3 );
 		  }
@@ -313,12 +313,12 @@ int main( int argc, char *argv[] )
 	}
        else
 	{
-	  for (p=Reason; (*p) && (isspace(*p)); p++);
+	  for (p=Reason; (*p) && (isspace((unsigned char)*p)); p++);
 	  if ( BasePath[CWDlen] == 0 )
-	      printf( "%s:%u:%u:%c:%s\n", FileName, Row, Col, Severity, p );
+	      printf( "%s:%lu:%lu:%c:%s\n", FileName, Row, Col, Severity, p );
 	  else
 	    {
-	      printf( "%s/%s:%u:%u:%c:%s\n", &BasePath[CWDlen+1], FileName, Row, Col, Severity, p );
+	      printf( "%s/%s:%lu:%lu:%c:%s\n", &BasePath[CWDlen+1], FileName, Row, Col, Severity, p );
 	    }
 	}
       if (!prefetch)

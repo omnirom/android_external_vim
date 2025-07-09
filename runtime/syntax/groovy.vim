@@ -1,14 +1,15 @@
 " Vim syntax file
 " Language:	Groovy
-" Original Author:	Alessio Pace <billy.corgan@tiscali.it>
-" Maintainer:	Tobias Rapp <yahuxo@gmx.de>
-" Version: 	0.1.16
+" Original Author:	Alessio Pace <billy.corgan AT tiscali.it>
+" Maintainer:	Tobias Rapp <yahuxo+vim AT mailbox.org>
+" Version: 	0.1.18
 " URL:	  http://www.vim.org/scripts/script.php?script_id=945
-" Last Change:	2016 May 23
+" Last Change:	2021 Feb 03
+"               2025 Apr 27 by Vim Project correct Vim script spelling
 
 " THE ORIGINAL AUTHOR'S NOTES:
 "
-" This is my very first vim script, I hope to have
+" This is my very first Vim script, I hope to have
 " done it the right way.
 "
 " I must directly or indirectly thank the author of java.vim and ruby.vim:
@@ -253,7 +254,8 @@ if exists("groovy_regex_strings")
 endif
 " syn region groovyELExpr start=+${+ end=+}+ keepend contained
 syn match groovyELExpr /\${.\{-}}/ contained
-syn match groovyELExpr /\$[a-zA-Z_][a-zA-Z0-9_.]*/ contained
+" Fix: force use of the NFA regexp engine (2), see GitHub issue #7280
+syn match groovyELExpr /\%#=2\$[a-zA-Z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF\u0100-\uFFFE_][a-zA-Z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF\u0100-\uFFFE0-9_.]*/ contained
 hi def link groovyELExpr Identifier
 
 " TODO: better matching. I am waiting to understand how it really works in groovy
@@ -361,7 +363,7 @@ exec "syn sync ccomment groovyComment minlines=" . groovy_minlines
 
 " Mark these as operators
 
-" Hightlight brackets
+" Highlight brackets
 " syn match  groovyBraces		"[{}]"
 " syn match  groovyBraces		"[\[\]]"
 " syn match  groovyBraces		"[\|]"

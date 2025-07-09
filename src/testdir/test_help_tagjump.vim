@@ -11,6 +11,16 @@ func Test_help_tagjump()
   call assert_true(getline('.') =~ '\*bar\*')
   helpclose
 
+  help "
+  call assert_equal("help", &filetype)
+  call assert_true(getline('.') =~ '\*quote\*')
+  helpclose
+
+  help *
+  call assert_equal("help", &filetype)
+  call assert_true(getline('.') =~ '\*star\*')
+  helpclose
+
   help "*
   call assert_equal("help", &filetype)
   call assert_true(getline('.') =~ '\*quotestar\*')
@@ -19,6 +29,11 @@ func Test_help_tagjump()
   help sm?le
   call assert_equal("help", &filetype)
   call assert_true(getline('.') =~ '\*:smile\*')
+  helpclose
+
+  help ??
+  call assert_equal("help", &filetype)
+  call assert_true(getline('.') =~ '\*??\*')
   helpclose
 
   help :?
@@ -74,11 +89,45 @@ func Test_help_tagjump()
   call assert_true(getline('.') =~ '\*i_^_CTRL-D\*')
   helpclose
 
+  help i^x^y
+  call assert_equal("help", &filetype)
+  call assert_true(getline('.') =~ '\*i_CTRL-X_CTRL-Y\*')
+  helpclose
+
+  exe "help i\<C-\>\<C-G>"
+  call assert_equal("help", &filetype)
+  call assert_true(getline('.') =~ '\*i_CTRL-\\_CTRL-G\*')
+  helpclose
+
   exec "help \<C-V>"
   call assert_equal("help", &filetype)
   call assert_true(getline('.') =~ '\*CTRL-V\*')
   helpclose
 
+  help /\|
+  call assert_equal("help", &filetype)
+  call assert_true(getline('.') =~ '\*/\\bar\*')
+  helpclose
+
+  help \_$
+  call assert_equal("help", &filetype)
+  call assert_true(getline('.') =~ '\*/\\_$\*')
+  helpclose
+
+  help CTRL-\_CTRL-N
+  call assert_equal("help", &filetype)
+  call assert_true(getline('.') =~ '\*CTRL-\\_CTRL-N\*')
+  helpclose
+
+  help `:pwd`,
+  call assert_equal("help", &filetype)
+  call assert_true(getline('.') =~ '\*:pwd\*')
+  helpclose
+
+  help `:ls`.
+  call assert_equal("help", &filetype)
+  call assert_true(getline('.') =~ '\*:ls\*')
+  helpclose
 
   exec "help! ('textwidth'"
   call assert_equal("help", &filetype)
@@ -110,6 +159,15 @@ func Test_help_tagjump()
   call assert_true(getline('.') =~ '\*{address}\*')
   helpclose
 
+  " Use special patterns in the help tag
+  for h in ['/\w', '/\%^', '/\%(', '/\zs', '/\@<=', '/\_$', '[++opt]', '/\{']
+    exec "help! " . h
+    call assert_equal("help", &filetype)
+    let pat = '\*' . escape(h, '\$[') . '\*'
+    call assert_true(getline('.') =~ pat, pat)
+    helpclose
+  endfor
+
   exusage
   call assert_equal("help", &filetype)
   call assert_true(getline('.') =~ '\*:index\*')
@@ -125,14 +183,14 @@ let s:langs = ['en', 'ab', 'ja']
 
 func s:doc_config_setup()
   let s:helpfile_save = &helpfile
-  let &helpfile="Xdir1/doc-en/doc/testdoc.txt"
+  let &helpfile="Xdocdir1/doc-en/doc/testdoc.txt"
   let s:rtp_save = &rtp
-  let &rtp="Xdir1/doc-en"
+  let &rtp="Xdocdir1/doc-en"
   if has('multi_lang')
     let s:helplang_save=&helplang
   endif
 
-  call delete('Xdir1', 'rf')
+  call delete('Xdocdir1', 'rf')
 
   for lang in s:langs
     if lang ==# 'en'
@@ -142,7 +200,7 @@ func s:doc_config_setup()
       let tagfname = 'tags-' . lang
       let docfname = 'testdoc.' . lang . 'x'
     endif
-    let docdir = "Xdir1/doc-" . lang . "/doc"
+    let docdir = "Xdocdir1/doc-" . lang . "/doc"
     call mkdir(docdir, "p")
     call writefile(["\t*test-char*", "\t*test-col*"], docdir . '/' . docfname)
     call writefile(["test-char\t" . docfname . "\t/*test-char*",
@@ -152,7 +210,7 @@ func s:doc_config_setup()
 endfunc
 
 func s:doc_config_teardown()
-  call delete('Xdir1', 'rf')
+  call delete('Xdocdir1', 'rf')
 
   let &helpfile = s:helpfile_save
   let &rtp = s:rtp_save
@@ -184,7 +242,7 @@ func Test_help_complete()
       call assert_equal(['test-col', 'test-char'], list)
 
       " 'helplang=' and help file lang is 'en' and 'ab'
-      set rtp+=Xdir1/doc-ab
+      set rtp+=Xdocdir1/doc-ab
       set helplang=
       let list = s:get_help_compl_list("test")
       call assert_equal(sort(['test-col@en', 'test-col@ab',
@@ -197,7 +255,7 @@ func Test_help_complete()
             \             'test-char', 'test-char@en']), sort(list))
 
       " 'helplang=' and help file lang is 'en', 'ab' and 'ja'
-      set rtp+=Xdir1/doc-ja
+      set rtp+=Xdocdir1/doc-ja
       set helplang=
       let list = s:get_help_compl_list("test")
       call assert_equal(sort(['test-col@en', 'test-col@ab',
@@ -240,8 +298,8 @@ func Test_help_respect_current_file_lang()
         helpclose
       endfunc
 
-      set rtp+=Xdir1/doc-ab
-      set rtp+=Xdir1/doc-ja
+      set rtp+=Xdocdir1/doc-ab
+      set rtp+=Xdocdir1/doc-ja
 
       set helplang=ab
       call s:check_help_file_ext('test-char', 'abx')

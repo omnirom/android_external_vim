@@ -1,8 +1,6 @@
 " Test for $HOME on Windows.
 
-if !has('win32')
-  finish
-endif
+CheckMSWindows
 
 let s:env = {}
 
@@ -106,7 +104,7 @@ func Test_WindowsHome()
       RestoreEnv
       let $HOME = save_home
       let env = ''
-      let job = job_start('cmd /c set', {'out_cb': {ch,x->[env,execute('let env=x')]}})
+      let job = job_start('cmd /D /c set', {'out_cb': {ch,x->[env,execute('let env=x')]}})
       sleep 1
       let env = filter(split(env, "\n"), 'v:val=="HOME"')
       let home = len(env) == 0 ? "" : env[0]
@@ -119,3 +117,5 @@ func Test_WindowsHome()
     delcommand UnletEnv
   endtry
 endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

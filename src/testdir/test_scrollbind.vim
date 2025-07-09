@@ -1,4 +1,5 @@
 " Test for 'scrollbind' causing an unexpected scroll of one of the windows.
+
 func Test_scrollbind()
   " We don't want the status line to cause problems:
   set laststatus=0
@@ -217,8 +218,8 @@ end of window 2
 	      \ '7 line 02 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ 02',
 	      \ '56789ABCDEFGHIJKLMNOPQRSTUVWXYZ 02',
 	      \ 'UTSRQPONMLKJIHGREDCBA9876543210 02',
-	      \ '. line 11 ZYXWVUTSRQPONMLKJIHGREDCBA9876543210 11',
-	      \ '. line 11 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ 11',
+	      \ '. line 10 ZYXWVUTSRQPONMLKJIHGREDCBA9876543210 10',
+	      \ '. line 10 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ 10',
 	      \ ''],  getline(1, '$'))
   enew!
 
@@ -270,3 +271,5 @@ end of window 2
   new | only!
   set scrollbind& scrollopt& scrolloff& wrap& equalalways& splitbelow&
 endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

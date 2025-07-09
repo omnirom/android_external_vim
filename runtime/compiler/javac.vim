@@ -1,17 +1,25 @@
 " Vim compiler file
-" Compiler:	javac
+" Compiler:	Java Development Kit Compiler
 " Maintainer:	Doug Kearns <dougkearns@gmail.com>
-" Last Change:	2004 Nov 27
+" Last Change:	2024 Nov 19 (enable local javac_makeprg_params)
+" 		2025 Mar 11 (add comment for Dispatch)
 
 if exists("current_compiler")
   finish
 endif
 let current_compiler = "javac"
 
-if exists(":CompilerSet") != 2		" older Vim always used :setlocal
-  command -nargs=* CompilerSet setlocal <args>
-endif
+let s:cpo_save = &cpo
+set cpo&vim
 
-CompilerSet makeprg=javac
+" CompilerSet makeprg=javac
+execute $'CompilerSet makeprg=javac\ {escape(get(b:, 'javac_makeprg_params', get(g:, 'javac_makeprg_params', '')), ' \|"')}'
 
-CompilerSet errorformat=%E%f:%l:\ %m,%-Z%p^,%-C%.%#,%-G%.%#
+CompilerSet errorformat=%E%f:%l:\ error:\ %m,
+		       \%W%f:%l:\ warning:\ %m,
+		       \%-Z%p^,
+		       \%-C%.%#,
+		       \%-G%.%#
+
+let &cpo = s:cpo_save
+unlet s:cpo_save

@@ -2,11 +2,7 @@
 " NOTE: This just checks if the code works. If you know Arabic please add
 " functional tests that check the shaping works with real text.
 
-if !has('arabic')
-  throw 'Skipped: arabic feature missing'
-endif
-
-source view_util.vim
+CheckFeature arabic
 
 " Return list of Unicode characters at line lnum.
 " Combining characters are treated as a single item.
@@ -75,9 +71,9 @@ endfunc
 func Test_arabic_toggle_keymap()
   new
   set arabic
-  call feedkeys("i12\<C-^>12\<C-^>12", 'tx')
-  call assert_match("^ *٢١21٢١$", ScreenLines(1, &columns)[0])
-  call assert_equal('١٢12١٢', getline('.'))
+  call feedkeys("i12\<C-^>12\<C-^>12abcd", 'tx')
+  call assert_match("^ *.*ﺷ212121$", ScreenLines(1, &columns)[0])
+  call assert_equal('121212شلاؤي', getline('.'))
   set arabic&
   bwipe!
 endfunc
@@ -563,3 +559,34 @@ func Test_shape_combination_isolated()
   set arabicshape&
   bwipe!
 endfunc
+
+" Test for entering arabic character in a search command
+func Test_arabic_chars_in_search_cmd()
+  new
+  set arabic
+  call feedkeys("i\nsghl!\<C-^>vim\<C-^>", 'tx')
+  call cursor(1, 1)
+  call feedkeys("/^sghl!\<C-^>vim$\<C-^>\<CR>", 'tx')
+  call assert_equal([2, 1], [line('.'), col('.')])
+
+  " Try searching in left-to-right mode
+  set rightleftcmd=
+  call cursor(1, 1)
+  call feedkeys("/^sghl!\<C-^>vim$\<CR>", 'tx')
+  call assert_equal([2, 1], [line('.'), col('.')])
+
+  set rightleftcmd&
+  set rightleft&
+  set arabic&
+  bwipe!
+endfunc
+
+func Test_W17_arabic_requires_utf8()
+  let save_enc = &encoding
+  set encoding=latin1 arabic
+  call assert_match('^W17:', GetMessages()[-1])
+  set arabic&
+  let &encoding = save_enc
+endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

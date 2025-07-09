@@ -1,66 +1,140 @@
 " Tests for user defined commands
 
+import './util/vim9.vim' as v9
+
+source util/screendump.vim
+
 " Test for <mods> in user defined commands
 function Test_cmdmods()
   let g:mods = ''
 
-  command! -nargs=* MyCmd let g:mods .= '<mods> '
+  command! -nargs=* MyCmd let g:mods = '<mods>'
 
   MyCmd
+  call assert_equal('', g:mods)
   aboveleft MyCmd
+  call assert_equal('aboveleft', g:mods)
   abo MyCmd
+  call assert_equal('aboveleft', g:mods)
   belowright MyCmd
+  call assert_equal('belowright', g:mods)
   bel MyCmd
+  call assert_equal('belowright', g:mods)
   botright MyCmd
+  call assert_equal('botright', g:mods)
   bo MyCmd
+  call assert_equal('botright', g:mods)
   browse MyCmd
+  call assert_equal('browse', g:mods)
   bro MyCmd
+  call assert_equal('browse', g:mods)
   confirm MyCmd
+  call assert_equal('confirm', g:mods)
   conf MyCmd
+  call assert_equal('confirm', g:mods)
   hide MyCmd
+  call assert_equal('hide', g:mods)
   hid MyCmd
+  call assert_equal('hide', g:mods)
   keepalt MyCmd
+  call assert_equal('keepalt', g:mods)
   keepa MyCmd
+  call assert_equal('keepalt', g:mods)
   keepjumps MyCmd
+  call assert_equal('keepjumps', g:mods)
   keepj MyCmd
+  call assert_equal('keepjumps', g:mods)
   keepmarks MyCmd
+  call assert_equal('keepmarks', g:mods)
   kee MyCmd
+  call assert_equal('keepmarks', g:mods)
   keeppatterns MyCmd
+  call assert_equal('keeppatterns', g:mods)
   keepp MyCmd
+  call assert_equal('keeppatterns', g:mods)
   leftabove MyCmd  " results in :aboveleft
+  call assert_equal('aboveleft', g:mods)
   lefta MyCmd
+  call assert_equal('aboveleft', g:mods)
   lockmarks MyCmd
+  call assert_equal('lockmarks', g:mods)
   loc MyCmd
-  " noautocmd MyCmd
+  call assert_equal('lockmarks', g:mods)
+  noautocmd MyCmd
+  call assert_equal('noautocmd', g:mods)
+  noa MyCmd
+  call assert_equal('noautocmd', g:mods)
   noswapfile MyCmd
+  call assert_equal('noswapfile', g:mods)
   nos MyCmd
+  call assert_equal('noswapfile', g:mods)
   rightbelow MyCmd " results in :belowright
+  call assert_equal('belowright', g:mods)
   rightb MyCmd
+  call assert_equal('belowright', g:mods)
   " sandbox MyCmd
   silent MyCmd
+  call assert_equal('silent', g:mods)
   sil MyCmd
+  call assert_equal('silent', g:mods)
+  silent! MyCmd
+  call assert_equal('silent!', g:mods)
+  sil! MyCmd
+  call assert_equal('silent!', g:mods)
   tab MyCmd
+  call assert_equal('tab', g:mods)
+  0tab MyCmd
+  call assert_equal('0tab', g:mods)
+  tab split
+  tab MyCmd
+  call assert_equal('tab', g:mods)
+  1tab MyCmd
+  call assert_equal('1tab', g:mods)
+  tabprev
+  tab MyCmd
+  call assert_equal('tab', g:mods)
+  2tab MyCmd
+  call assert_equal('2tab', g:mods)
+  2tabclose
   topleft MyCmd
+  call assert_equal('topleft', g:mods)
   to MyCmd
-  " unsilent MyCmd
+  call assert_equal('topleft', g:mods)
+  unsilent MyCmd
+  call assert_equal('unsilent', g:mods)
+  uns MyCmd
+  call assert_equal('unsilent', g:mods)
   verbose MyCmd
+  call assert_equal('verbose', g:mods)
   verb MyCmd
+  call assert_equal('verbose', g:mods)
+  0verbose MyCmd
+  call assert_equal('0verbose', g:mods)
+  3verbose MyCmd
+  call assert_equal('3verbose', g:mods)
+  999verbose MyCmd
+  call assert_equal('999verbose', g:mods)
   vertical MyCmd
+  call assert_equal('vertical', g:mods)
   vert MyCmd
+  call assert_equal('vertical', g:mods)
+  horizontal MyCmd
+  call assert_equal('horizontal', g:mods)
+  hor MyCmd
+  call assert_equal('horizontal', g:mods)
 
   aboveleft belowright botright browse confirm hide keepalt keepjumps
-	      \ keepmarks keeppatterns lockmarks noswapfile silent tab
-	      \ topleft verbose vertical MyCmd
+	      \ keepmarks keeppatterns lockmarks noautocmd noswapfile silent
+	      \ tab topleft unsilent verbose vertical MyCmd
 
-  call assert_equal(' aboveleft aboveleft belowright belowright botright ' .
-      \ 'botright browse browse confirm confirm hide hide ' .
-      \ 'keepalt keepalt keepjumps keepjumps keepmarks keepmarks ' .
-      \ 'keeppatterns keeppatterns aboveleft aboveleft lockmarks lockmarks noswapfile ' .
-      \ 'noswapfile belowright belowright silent silent tab topleft topleft verbose verbose ' .
-      \ 'vertical vertical ' .
-      \ 'aboveleft belowright botright browse confirm hide keepalt keepjumps ' .
-      \ 'keepmarks keeppatterns lockmarks noswapfile silent tab topleft ' .
-      \ 'verbose vertical ', g:mods)
+  call assert_equal('browse confirm hide keepalt keepjumps ' .
+      \ 'keepmarks keeppatterns lockmarks noswapfile unsilent noautocmd ' .
+      \ 'silent verbose aboveleft belowright botright tab topleft vertical',
+      \ g:mods)
+
+  kee keep keepm keepma keepmar keepmarks keepa keepalt keepj keepjumps
+      \ keepp keeppatterns MyCmd
+  call assert_equal('keepalt keepjumps keepmarks keeppatterns', g:mods)
 
   let g:mods = ''
   command! -nargs=* MyQCmd let g:mods .= '<q-mods> '
@@ -184,7 +258,7 @@ func Test_Ambiguous()
 endfunc
 
 func Test_redefine_on_reload()
-  call writefile(['command ExistingCommand echo "yes"'], 'Xcommandexists')
+  call writefile(['command ExistingCommand echo "yes"'], 'Xcommandexists', 'D')
   call assert_equal(0, exists(':ExistingCommand'))
   source Xcommandexists
   call assert_equal(2, exists(':ExistingCommand'))
@@ -193,9 +267,8 @@ func Test_redefine_on_reload()
   call assert_equal(2, exists(':ExistingCommand'))
 
   " But redefining in another script is not OK.
-  call writefile(['command ExistingCommand echo "yes"'], 'Xcommandexists2')
+  call writefile(['command ExistingCommand echo "yes"'], 'Xcommandexists2', 'D')
   call assert_fails('source Xcommandexists2', 'E174:')
-  call delete('Xcommandexists2')
 
   " And defining twice in one script is not OK.
   delcommand ExistingCommand
@@ -207,7 +280,6 @@ func Test_redefine_on_reload()
   call assert_fails('source Xcommandexists', 'E174:')
   call assert_equal(2, exists(':ExistingCommand'))
 
-  call delete('Xcommandexists')
   delcommand ExistingCommand
 endfunc
 
@@ -243,6 +315,24 @@ func Test_CmdErrors()
   call assert_fails('com! -count=x DoCmd :', 'E178:')
   call assert_fails('com! -range=x DoCmd :', 'E178:')
 
+  com! -complete=file DoCmd :
+  call assert_match('E1208:', v:warningmsg)
+  let v:warningmsg = ''
+  com! -nargs=0 -complete=file DoCmd :
+  call assert_match('E1208:', v:warningmsg)
+
+  let lines =<< trim END
+      vim9script
+      com! -complete=file DoCmd :
+  END
+  call v9.CheckScriptFailure(lines, 'E1208:', 2)
+
+  let lines =<< trim END
+      vim9script
+      com! -nargs=0 -complete=file DoCmd :
+  END
+  call v9.CheckScriptFailure(lines, 'E1208:', 2)
+
   com! -nargs=0 DoCmd :
   call assert_fails('DoCmd x', 'E488:')
 
@@ -255,6 +345,11 @@ func Test_CmdErrors()
   call assert_fails('com DoCmd :', 'E174:')
   comclear
   call assert_fails('delcom DoCmd', 'E184:')
+
+  " These used to leak memory
+  call assert_fails('com! -complete=custom,CustomComplete _ :', 'E182:')
+  call assert_fails('com! -complete=custom,CustomComplete docmd :', 'E183:')
+  call assert_fails('com! -complete=custom,CustomComplete -xxx DoCmd :', 'E181:')
 endfunc
 
 func CustomComplete(A, L, P)
@@ -262,15 +357,15 @@ func CustomComplete(A, L, P)
 endfunc
 
 func CustomCompleteList(A, L, P)
-  return [ "Monday", "Tuesday", "Wednesday" ]
+  return [ "Monday", "Tuesday", "Wednesday", {}, test_null_string()]
 endfunc
 
 func Test_CmdCompletion()
   call feedkeys(":com -\<C-A>\<C-B>\"\<CR>", 'tx')
-  call assert_equal('"com -addr bang bar buffer complete count nargs range register', @:)
+  call assert_equal('"com -addr bang bar buffer complete count keepscript nargs range register', @:)
 
   call feedkeys(":com -nargs=0 -\<C-A>\<C-B>\"\<CR>", 'tx')
-  call assert_equal('"com -nargs=0 -addr bang bar buffer complete count nargs range register', @:)
+  call assert_equal('"com -nargs=0 -addr bang bar buffer complete count keepscript nargs range register', @:)
 
   call feedkeys(":com -nargs=\<C-A>\<C-B>\"\<CR>", 'tx')
   call assert_equal('"com -nargs=* + 0 1 ?', @:)
@@ -280,6 +375,22 @@ func Test_CmdCompletion()
 
   call feedkeys(":com -complete=co\<C-A>\<C-B>\"\<CR>", 'tx')
   call assert_equal('"com -complete=color command compiler', @:)
+
+  " try completion for unsupported argument values
+  call feedkeys(":com -newarg=\<Tab>\<C-B>\"\<CR>", 'tx')
+  call assert_equal("\"com -newarg=\t", @:)
+
+  " command completion after the name in a user defined command
+  call feedkeys(":com MyCmd chist\<Tab>\<C-B>\"\<CR>", 'tx')
+  call assert_equal("\"com MyCmd chistory", @:)
+
+  " delete the Check commands to avoid them showing up
+  call feedkeys(":com Check\<C-A>\<C-B>\"\<CR>", 'tx')
+  let cmds = substitute(@:, '"com ', '', '')->split()
+  for cmd in cmds
+    exe 'delcommand ' .. cmd
+  endfor
+  delcommand MissingFeature
 
   command! DoCmd1 :
   command! DoCmd2 :
@@ -291,6 +402,10 @@ func Test_CmdCompletion()
 
   call feedkeys(":delcom DoC\<C-A>\<C-B>\"\<CR>", 'tx')
   call assert_equal('"delcom DoCmd1 DoCmd2', @:)
+
+  " try argument completion for a command without completion
+  call feedkeys(":DoCmd1 \<Tab>\<C-B>\"\<CR>", 'tx')
+  call assert_equal("\"DoCmd1 \t", @:)
 
   delcom DoCmd1
   call feedkeys(":delcom DoC\<C-A>\<C-B>\"\<CR>", 'tx')
@@ -306,27 +421,59 @@ func Test_CmdCompletion()
   call feedkeys(":com DoC\<C-A>\<C-B>\"\<CR>", 'tx')
   call assert_equal('"com DoC', @:)
 
-  com! -complete=behave DoCmd :
+  com! -nargs=1 -complete=behave DoCmd :
   call feedkeys(":DoCmd \<C-A>\<C-B>\"\<CR>", 'tx')
   call assert_equal('"DoCmd mswin xterm', @:)
 
-  " This does not work. Why?
-  "call feedkeys(":DoCmd x\<C-A>\<C-B>\"\<CR>", 'tx')
-  "call assert_equal('"DoCmd xterm', @:)
+  " Test for file name completion
+  com! -nargs=1 -complete=file DoCmd :
+  call feedkeys(":DoCmd READM\<Tab>\<C-B>\"\<CR>", 'tx')
+  call assert_equal('"DoCmd README.txt', @:)
 
-  com! -complete=custom,CustomComplete DoCmd :
+  " Test for buffer name completion
+  com! -nargs=1 -complete=buffer DoCmd :
+  let bnum = bufadd('BufForUserCmd')
+  call setbufvar(bnum, '&buflisted', 1)
+  call feedkeys(":DoCmd BufFor\<Tab>\<C-B>\"\<CR>", 'tx')
+  call assert_equal('"DoCmd BufForUserCmd', @:)
+  bwipe BufForUserCmd
+  call feedkeys(":DoCmd BufFor\<Tab>\<C-B>\"\<CR>", 'tx')
+  call assert_equal('"DoCmd BufFor', @:)
+
+  com! -nargs=* -complete=custom,CustomComplete DoCmd :
   call feedkeys(":DoCmd \<C-A>\<C-B>\"\<CR>", 'tx')
   call assert_equal('"DoCmd January February Mars', @:)
 
-  com! -complete=customlist,CustomCompleteList DoCmd :
+  com! -nargs=? -complete=customlist,CustomCompleteList DoCmd :
   call feedkeys(":DoCmd \<C-A>\<C-B>\"\<CR>", 'tx')
   call assert_equal('"DoCmd Monday Tuesday Wednesday', @:)
 
-  com! -complete=custom,CustomCompleteList DoCmd :
+  com! -nargs=+ -complete=custom,CustomCompleteList DoCmd :
   call assert_fails("call feedkeys(':DoCmd \<C-D>', 'tx')", 'E730:')
 
-  com! -complete=customlist,CustomComp DoCmd :
+  com! -nargs=+ -complete=customlist,CustomComp DoCmd :
   call assert_fails("call feedkeys(':DoCmd \<C-D>', 'tx')", 'E117:')
+
+  " custom completion without a function
+  com! -nargs=? -complete=custom, DoCmd
+  call assert_beeps("call feedkeys(':DoCmd \t', 'tx')")
+
+  " custom completion failure with the wrong function
+  com! -nargs=? -complete=custom,min DoCmd
+  call assert_fails("call feedkeys(':DoCmd \t', 'tx')", 'E118:')
+
+  " custom completion for a pattern with a backslash
+  let g:ArgLead = ''
+  func! CustCompl(A, L, P)
+    let g:ArgLead = a:A
+    return ['one', 'two', 'three']
+  endfunc
+  com! -nargs=? -complete=customlist,CustCompl DoCmd
+  call feedkeys(":DoCmd a\\\t", 'xt')
+  call assert_equal('a\', g:ArgLead)
+  delfunc CustCompl
+
+  delcom DoCmd
 endfunc
 
 func CallExecute(A, L, P)
@@ -458,21 +605,21 @@ func Test_command_list()
         \           execute('command DoCmd'))
 
   " Test with various -complete= argument values (non-exhaustive list)
-  command! -complete=arglist DoCmd :
+  command! -nargs=1 -complete=arglist DoCmd :
   call assert_equal("\n    Name              Args Address Complete    Definition"
-        \        .. "\n    DoCmd             0            arglist     :",
+        \        .. "\n    DoCmd             1            arglist     :",
         \           execute('command DoCmd'))
-  command! -complete=augroup DoCmd :
+  command! -nargs=* -complete=augroup DoCmd :
   call assert_equal("\n    Name              Args Address Complete    Definition"
-        \        .. "\n    DoCmd             0            augroup     :",
+        \        .. "\n    DoCmd             *            augroup     :",
         \           execute('command DoCmd'))
-  command! -complete=custom,CustomComplete DoCmd :
+  command! -nargs=? -complete=custom,CustomComplete DoCmd :
   call assert_equal("\n    Name              Args Address Complete    Definition"
-        \        .. "\n    DoCmd             0            custom      :",
+        \        .. "\n    DoCmd             ?            custom      :",
         \           execute('command DoCmd'))
-  command! -complete=customlist,CustomComplete DoCmd :
+  command! -nargs=+ -complete=customlist,CustomComplete DoCmd :
   call assert_equal("\n    Name              Args Address Complete    Definition"
-        \        .. "\n    DoCmd             0            customlist  :",
+        \        .. "\n    DoCmd             +            customlist  :",
         \           execute('command DoCmd'))
 
   " Test with various -narg= argument values.
@@ -531,10 +678,10 @@ func Test_command_list()
         \           execute('command DoCmd'))
 
   " Test output in verbose mode.
-  command! DoCmd :
+  command! -nargs=+ -complete=customlist,SomeFunc DoCmd :ls
   call assert_match("^\n"
         \        .. "    Name              Args Address Complete    Definition\n"
-        \        .. "    DoCmd             0                        :\n"
+        \        .. "    DoCmd             +            customlist,SomeFunc :ls\n"
         \        .. "\tLast set from .*/test_usercommands.vim line \\d\\+$",
         \           execute('verbose command DoCmd'))
 
@@ -542,3 +689,299 @@ func Test_command_list()
   call assert_equal("\nNo user-defined commands found", execute(':command Xxx'))
   call assert_equal("\nNo user-defined commands found", execute('command'))
 endfunc
+
+" Test for a custom user completion returning the wrong value type
+func Test_usercmd_custom()
+  func T1(a, c, p)
+    return "a\nb\n"
+  endfunc
+  command -nargs=* -complete=customlist,T1 TCmd1
+  call assert_fails('call feedkeys(":TCmd1 \<C-A>\<C-B>\"\<CR>", "xt")', 'E1303: Custom list completion function does not return a List but a string')
+  call assert_equal('"TCmd1 ', @:)
+  delcommand TCmd1
+  delfunc T1
+
+  func T2(a, c, p)
+    return {}
+  endfunc
+  command -nargs=* -complete=customlist,T2 TCmd2
+  call assert_fails('call feedkeys(":TCmd2 \<C-A>\<C-B>\"\<CR>", "xt")', 'E1303: Custom list completion function does not return a List but a dict')
+  call assert_equal('"TCmd2 ', @:)
+  delcommand TCmd2
+  delfunc T2
+endfunc
+
+func Test_usercmd_with_block()
+  command DoSomething {
+        g:didit = 'yes'  # comment
+        # comment line
+        g:didmore = 'more'
+      }
+  DoSomething
+  call assert_equal('yes', g:didit)
+  call assert_equal('more', g:didmore)
+  unlet g:didit
+  unlet g:didmore
+  delcommand DoSomething
+
+  command DoMap {
+	echo [1, 2, 3]->map((_, v) => v + 1)
+    }
+  DoMap
+  delcommand DoMap
+
+  let lines =<< trim END
+      command DoesNotEnd {
+         echo 'hello'
+  END
+  call v9.CheckScriptFailure(lines, 'E1026:')
+  delcommand DoesNotEnd
+
+  let lines =<< trim END
+      command HelloThere {
+         echo 'hello' | echo 'there'
+        }
+      HelloThere
+  END
+  call v9.CheckScriptSuccess(lines)
+  delcommand HelloThere
+
+  let lines =<< trim END
+      command EchoCond {
+          const test: string = true
+              ? 'true'
+              : 'false'
+          g:result = test
+      }
+      EchoCond
+  END
+  call v9.CheckScriptSuccess(lines)
+  call assert_equal('true', g:result)
+  unlet g:result
+
+  call feedkeys(":EchoCond\<CR>", 'xt')
+  call assert_equal('true', g:result)
+
+  delcommand EchoCond
+  unlet g:result
+
+  let lines =<< trim END
+      command BadCommand {
+         echo  {
+         'key': 'value',
+          }
+          }
+      BadCommand
+  END
+  call v9.CheckScriptFailure(lines, 'E1128:')
+  delcommand BadCommand
+
+  let lines =<< trim END
+	  vim9script
+    command Cmd {
+        g:result = [1,
+        2]
+    }
+    Cmd
+  END
+  call v9.CheckScriptSuccess(lines)
+  call assert_equal([1, 2], g:result)
+  delcommand Cmd
+	unlet! g:result
+
+  let lines =<< trim END
+		vim9script
+		command Cmd {
+			g:result = and(0x80,
+			0x80)
+    }
+    Cmd
+  END
+  call v9.CheckScriptSuccess(lines)
+  call assert_equal(128, g:result)
+  delcommand Cmd
+	unlet! g:result
+
+endfunc
+
+func Test_delcommand_buffer()
+  command Global echo 'global'
+  command -buffer OneBuffer echo 'one'
+  new
+  command -buffer TwoBuffer echo 'two'
+  call assert_equal(0, exists(':OneBuffer'))
+  call assert_equal(2, exists(':Global'))
+  call assert_equal(2, exists(':TwoBuffer'))
+  delcommand -buffer TwoBuffer
+  call assert_equal(0, exists(':TwoBuffer'))
+  call assert_fails('delcommand -buffer Global', 'E1237:')
+  call assert_fails('delcommand -buffer OneBuffer', 'E1237:')
+  bwipe!
+  call assert_equal(2, exists(':OneBuffer'))
+  delcommand -buffer OneBuffer
+  call assert_equal(0, exists(':OneBuffer'))
+  call assert_fails('delcommand -buffer Global', 'E1237:')
+  delcommand Global
+  call assert_equal(0, exists(':Global'))
+endfunc
+
+def Test_count_with_quotes()
+  command -count GetCount g:nr = <count>
+  execute("GetCount 1'2")
+  assert_equal(12, g:nr)
+  execute("GetCount 1'234'567")
+  assert_equal(1'234'567, g:nr)
+
+  execute("GetCount 1'234'567'890'123'456'789'012")
+  assert_equal(v:sizeoflong == 8 ? 9223372036854775807 : 2147483647, g:nr)
+
+  # TODO: test with negative number once this is supported
+
+  assert_fails("GetCount '12", "E488:")
+  assert_fails("GetCount 12'", "E488:")
+  assert_fails("GetCount 1''2", "E488:")
+
+  assert_fails(":1'2GetCount", 'E492:')
+  new
+  setline(1, 'text')
+  normal ma
+  execute(":1, 'aprint")
+  bwipe!
+
+  unlet g:nr
+  delcommand GetCount
+enddef
+
+func DefCmd(name)
+  if len(a:name) > 30
+    return
+  endif
+  exe 'command ' .. a:name .. ' call DefCmd("' .. a:name .. 'x")'
+  echo a:name
+  exe a:name
+endfunc
+
+func Test_recursive_define()
+  call DefCmd('Command')
+
+  let name = 'Command'
+  while len(name) <= 30
+    exe 'delcommand ' .. name
+    let name ..= 'x'
+  endwhile
+endfunc
+
+" Test for using buffer-local ambiguous user-defined commands
+func Test_buflocal_ambiguous_usercmd()
+  new
+  command -buffer -nargs=1 -complete=sign TestCmd1 echo "Hello"
+  command -buffer -nargs=1 -complete=sign TestCmd2 echo "World"
+
+  call assert_fails("call feedkeys(':TestCmd\<CR>', 'xt')", 'E464:')
+  call feedkeys(":TestCmd \<Tab>\<C-B>\"\<CR>", 'xt')
+  call assert_equal('"TestCmd ', @:)
+
+  delcommand TestCmd1
+  delcommand TestCmd2
+  bw!
+endfunc
+
+" Test for using buffer-local user command from cmdwin.
+func Test_buflocal_usercmd_cmdwin()
+  new
+  command -buffer TestCmd edit Test
+  " This used to crash Vim
+  call assert_fails("norm q::TestCmd\<CR>", 'E11:')
+  bw!
+endfunc
+
+" Test for using a multibyte character in a user command
+func Test_multibyte_in_usercmd()
+  command SubJapanesePeriodToDot exe "%s/\u3002/./g"
+  new
+  call setline(1, "Hello\u3002")
+  SubJapanesePeriodToDot
+  call assert_equal('Hello.', getline(1))
+  bw!
+  delcommand SubJapanesePeriodToDot
+endfunc
+
+" Declaring a variable in a {} uses Vim9 script rules, even when defined in a
+" legacy script.
+func Test_block_declaration_legacy_script()
+  let lines =<< trim END
+      command -range Rename {
+                     var save = @a
+                     @a = 'something'
+                     g:someExpr = @a
+                     @a = save
+                }
+  END
+  call writefile(lines, 'Xlegacy', 'D')
+  source Xlegacy
+
+  let lines =<< trim END
+      let @a = 'saved'
+      Rename
+      call assert_equal('something', g:someExpr)
+      call assert_equal('saved', @a)
+
+      let g:someExpr = 'xxx'
+      let @a = 'also'
+      Rename
+      call assert_equal('something', g:someExpr)
+      call assert_equal('also', @a)
+  END
+  call writefile(lines, 'Xother', 'D')
+  source Xother
+
+  unlet g:someExpr
+  delcommand Rename
+endfunc
+
+func Test_comclear_while_listing()
+  call CheckRunVimInTerminal()
+
+  let lines =<< trim END
+      set nocompatible
+      comclear
+      for i in range(1, 999)
+        exe 'command ' .. 'Foo' .. i .. ' bar'
+      endfor
+      au CmdlineLeave : call timer_start(0, {-> execute('comclear')})
+  END
+  call writefile(lines, 'Xcommandclear', 'D')
+  let buf = RunVimInTerminal('-S Xcommandclear', {'rows': 10})
+
+  " this was using freed memory
+  call term_sendkeys(buf, ":command\<CR>")
+  call TermWait(buf, 50)
+  call term_sendkeys(buf, "j")
+  call TermWait(buf, 50)
+  call term_sendkeys(buf, "G")
+  call term_sendkeys(buf, "\<CR>")
+
+  call StopVimInTerminal(buf)
+endfunc
+
+" Test for listing user commands.
+func Test_command_list_0()
+  " Check space padding of attribute and name in command list
+  set vbs&
+  command! ShortCommand echo "ShortCommand"
+  command! VeryMuchLongerCommand echo "VeryMuchLongerCommand"
+
+  redi @"> | com | redi END
+  pu
+
+  let bl = matchbufline(bufnr('%'), "^    ShortCommand      0", 1, '$')
+  call assert_false(bl == [])
+  let bl = matchbufline(bufnr('%'), "^    VeryMuchLongerCommand 0", 1, '$')
+  call assert_false(bl == [])
+
+  bwipe!
+  delcommand ShortCommand
+  delcommand VeryMuchLongerCommand
+endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

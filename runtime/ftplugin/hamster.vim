@@ -2,7 +2,8 @@
 " Language:    Hamster Script
 " Version:     2.0.6.0
 " Maintainer:  David Fishburn <dfishburn dot vim at gmail dot com>
-" Last Change: 2017 Mar 18
+" Last Change: 2021 Jan 19
+"              2024 May 23 by Riley Bruins <ribru17@gmail.com> ('commentstring')
 
 " Only do this when not done yet for this buffer
 if exists("b:did_ftplugin")
@@ -31,7 +32,7 @@ if &tw == 0
 endif
 
 " Comments start with a double quote
-setlocal commentstring=#%s
+setlocal commentstring=#\ %s
 
 " Move around functions.
 noremap <silent><buffer> [[ :call search('^\s*sub\>', "bW")<CR>
@@ -57,6 +58,9 @@ if exists("loaded_matchit")
 endif
 
 setlocal ignorecase
+
 let &cpo = s:cpo_save
 unlet s:cpo_save
-setlocal cpo+=M		" makes \%( match \)
+
+" Disabled, 'cpo' is a global option.
+" setlocal cpo+=M		" makes \%( match \)

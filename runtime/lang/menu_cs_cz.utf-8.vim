@@ -2,6 +2,8 @@
 " Maintainer:           Jiri Sedlak <jiri_sedlak@users.sourceforge.net>
 " Previous maintainer:  Jiri Brezina
 " Based on:             menu.vim (2012-10-21)
+" Last Change:          2024 May 2
+" Original translations
 
 " Quit when menu translations have already been done.
 if exists("did_menu_trans")
@@ -18,7 +20,7 @@ scriptencoding utf-8
 menutrans &File				&Soubor
 menutrans &Open\.\.\.<Tab>:e		&Otevřít\.\.\.<Tab>:e
 menutrans Sp&lit-Open\.\.\.<Tab>:sp	Otevřít\ v\ no&vém\ okně\.\.\.<Tab>:sp
-menutrans Open\ Tab\.\.\.<Tab>:tabnew	Otevřít\ tab\.\.\.<Tab>:tabnew
+menutrans Open\ &Tab\.\.\.<Tab>:tabnew	Otevřít\ tab\.\.\.<Tab>:tabnew
 menutrans &New<Tab>:enew		&Nový<Tab>:enew
 menutrans &Close<Tab>:close		&Zavřít<Tab>:close
 menutrans &Save<Tab>:w			&Uložit<Tab>:w
@@ -62,8 +64,8 @@ menutrans Settings\ &Window		Nastav&ení\ okna
 menutrans Startup\ &Settings  Počáteční\ &nastavení
 menutrans &Global\ Settings				&Globální\ nastavení
 menutrans Toggle\ Pattern\ &Highlight<Tab>:set\ hls!	&Přepnout\ zvýraznění\ vzoru<Tab>:set\ hls!
-menutrans Toggle\ &Ignore-case<Tab>:set\ ic!		Přepnout\ ignorování\ &VERZÁLEK<Tab>:set\ ic!
-menutrans Toggle\ &Showmatch<Tab>:set\ sm!		Přepnout\ &Showmatch\ \{\(\[\])\}<Tab>:set\ sm!
+menutrans Toggle\ &Ignoring\ Case<Tab>:set\ ic!		Přepnout\ ignorování\ &VERZÁLEK<Tab>:set\ ic!
+menutrans Toggle\ &Showing\ Matched\ Pairs<Tab>:set\ sm!		Přepnout\ &Showmatch\ \{\(\[\])\}<Tab>:set\ sm!
 menutrans &Context\ lines				Zobrazit\ konte&xt\ kurzoru
 menutrans &Virtual\ Edit				Virtuální\ p&ozice\ kurzoru
 menutrans Never						Nikdy
@@ -72,7 +74,7 @@ menutrans Insert\ mode					Insert\ mód
 menutrans Block\ and\ Insert				Blok\ a\ Insert
 menutrans Always					Vždycky
 menutrans Toggle\ Insert\ &Mode<Tab>:set\ im!		Přepnout\ Insert\ mó&d<Tab>:set\ im!
-menutrans Toggle\ Vi\ C&ompatible<Tab>:set\ cp!		Přepnout\ kompatibilní\ režim\ s\ 'vi'<Tab>:set\ cp!
+menutrans Toggle\ Vi\ C&ompatibility<Tab>:set\ cp!		Přepnout\ kompatibilní\ režim\ s\ 'vi'<Tab>:set\ cp!
 menutrans Search\ &Path\.\.\.				Nastavit\ &cestu\ k\ prohledávání\.\.\.
 menutrans Ta&g\ Files\.\.\.				Ta&g\ soubory\.\.\.
 menutrans Toggle\ &Toolbar				Přepnout\ &Toolbar
@@ -84,11 +86,11 @@ menutrans F&ile\ Settings				Nastavení\ so&uboru
 menutrans Toggle\ Line\ &Numbering<Tab>:set\ nu!	Přepnout\ číslování\ řá&dků<Tab>:set\ nu!
 menutrans Toggle\ relati&ve\ Line\ Numbering<Tab>:set\ rnu! Přepnout\ relativní\ číslování\ řá&dků<Tab>:set\ rnu!
 menutrans Toggle\ &List\ Mode<Tab>:set\ list!		Přepnout\ &List\ mód<Tab>:set\ list!
-menutrans Toggle\ Line\ &Wrap<Tab>:set\ wrap!		Přepnout\ zala&mování\ řádků<Tab>:set\ wrap!
-menutrans Toggle\ W&rap\ at\ word<Tab>:set\ lbr!	Přepnout\ zl&om\ ve\ slově<Tab>:set\ lbr!
-menutrans Toggle\ &expand-tab<Tab>:set\ et!		Přepnout\ &expand-tab<Tab>:set\ et!
-menutrans Toggle\ &auto-indent<Tab>:set\ ai!		Přepnout\ &auto-indent<Tab>:set\ ai!
-menutrans Toggle\ &C-indenting<Tab>:set\ cin!		Přepnout\ &C-indenting<Tab>:set\ cin!
+menutrans Toggle\ Line\ &Wrapping<Tab>:set\ wrap!		Přepnout\ zala&mování\ řádků<Tab>:set\ wrap!
+menutrans Toggle\ W&rapping\ at\ word<Tab>:set\ lbr!	Přepnout\ zl&om\ ve\ slově<Tab>:set\ lbr!
+menutrans Toggle\ Tab\ &Expanding<Tab>:set\ et!		Přepnout\ &expand-tab<Tab>:set\ et!
+menutrans Toggle\ &Auto\ Indenting<Tab>:set\ ai!		Přepnout\ &auto-indent<Tab>:set\ ai!
+menutrans Toggle\ &C-Style\ Indenting<Tab>:set\ cin!		Přepnout\ &C-indenting<Tab>:set\ cin!
 menutrans &Shiftwidth					Nastav&it\ šířku\ od&sazení
 menutrans Soft\ &Tabstop				Nastavit\ Soft\ &Tabstop
 menutrans Te&xt\ Width\.\.\.				Šířka\ te&xtu\.\.\.
@@ -110,7 +112,7 @@ menutrans Build\ &Tags\ File		&Vytvořit\ soubor\ tagů
 if has("spell")
    menutrans &Spelling			&Kontrola\ pravopisu
    menutrans &Spell\ Check\ On		&Zapnout\ kontrolu\ pravopisu
-   menutrans Spell\ Check\ &Off		&Vypnout \kontrolu\ pravopisu
+   menutrans Spell\ Check\ &Off		&Vypnout\ kontrolu\ pravopisu
    menutrans To\ &Next\ error<Tab>]s	&Další\ chyba<Tab>]s
    menutrans To\ &Previous\ error<Tab>[s	&Předchozí\ chyba<Tab>[s
    menutrans Suggest\ &Corrections<Tab>z=	&Navrhnout\ opravy<Tab>z=
@@ -153,7 +155,7 @@ if has("diff")
    menutrans &Put\ Block			&Vložit\ Blok
 endif
 
-menutrans &Make<Tab>:make		&Make<Tab>:make
+menutrans &Make<Tab>:make		udělat<Tab>:make
 menutrans &List\ Errors<Tab>:cl		Výpis\ &chyb<Tab>:cl
 menutrans L&ist\ Messages<Tab>:cl!	Výp&is\ zpráv<Tab>:cl!
 menutrans &Next\ Error<Tab>:cn		Další\ ch&yba<Tab>:cn
@@ -299,6 +301,7 @@ let g:menutrans_tags_dialog = "Zadejte jména souborů s tagy. Jména oddělte �
 let g:menutrans_textwidth_dialog = "Zadejte délku řádku (0 pro zakázání formátování):"
 let g:menutrans_fileformat_dialog = "Vyberte typ konce řádků"
 " }}}" 
+menutrans &Show\ File\ Types\ in\ menu		Zobrazit\ typy\ souborů\ v\ nabídce
 
 let &cpo = s:keepcpo
 unlet s:keepcpo

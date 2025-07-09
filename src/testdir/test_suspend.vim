@@ -1,7 +1,5 @@
 " Test :suspend
 
-source shared.vim
-
 func CheckSuspended(buf, fileExists)
   call WaitForAssert({-> assert_match('[$#] $', term_getline(a:buf, '.'))})
 
@@ -17,9 +15,14 @@ func CheckSuspended(buf, fileExists)
 endfunc
 
 func Test_suspend()
-  if !has('terminal') || !executable('/bin/sh')
-    return
-  endif
+  CheckFeature terminal
+  CheckExecutable /bin/sh
+
+  " Somehow the modifyOtherKeys response may get to the terminal when using
+  " Mac OS.  Make t_RK and 'keyprotocol' empty to avoid that.
+  set t_RK= keyprotocol=
+
+  call WaitForResponses()
 
   let buf = term_start('/bin/sh')
   " Wait for shell prompt.
@@ -27,7 +30,7 @@ func Test_suspend()
 
   call term_sendkeys(buf, v:progpath
         \               . " --clean -X"
-        \               . " -c 'set nu'"
+        \               . " -c 'set nu keyprotocol='"
         \               . " -c 'call setline(1, \"foo\")'"
         \               . " Xfoo\<CR>")
   " Cursor in terminal buffer should be on first line in spawned vim.
@@ -52,9 +55,63 @@ func Test_suspend()
 
   " Quit gracefully to dump coverage information.
   call term_sendkeys(buf, ":qall!\<CR>")
-  call term_wait(buf)
-  call Stop_shell_in_terminal(buf)
+  call TermWait(buf)
+  " Wait until Vim actually exited and shell shows a prompt
+  call WaitForAssert({-> assert_match('[$#] $', term_getline(buf, '.'))})
+  call StopShellInTerminal(buf)
 
   exe buf . 'bwipe!'
   call delete('Xfoo')
 endfunc
+
+func Test_suspend_autocmd()
+  CheckFeature terminal
+  CheckExecutable /bin/sh
+
+  " Somehow the modifyOtherKeys response may get to the terminal when using
+  " Mac OS.  Make t_RK and 'keyprotocol' empty to avoid that.
+  set t_RK= keyprotocol=
+
+  call WaitForResponses()
+
+  let buf = term_start('/bin/sh', #{term_rows: 6})
+  " Wait for shell prompt.
+  call WaitForAssert({-> assert_match('[$#] $', term_getline(buf, '.'))})
+
+  call term_sendkeys(buf, v:progpath
+        \               . " --clean -X"
+        \               . " -c 'set nu keyprotocol='"
+        \               . " -c 'let g:count = 0'"
+        \               . " -c 'au VimSuspend * let g:count += 1'"
+        \               . " -c 'au VimResume * let g:count += 1'"
+        \               . " -c 'call setline(1, \"foo\")'"
+        \               . " Xfoo\<CR>")
+  " Cursor in terminal buffer should be on first line in spawned vim.
+  call WaitForAssert({-> assert_equal('  1 foo', term_getline(buf, '.'))})
+
+  for suspend_cmd in [":suspend\<CR>",
+        \             ":stop\<CR>",
+        \             ":suspend!\<CR>",
+        \             ":stop!\<CR>",
+        \             "\<C-Z>"]
+    " Suspend and wait for shell prompt.  Then "fg" will restore Vim.
+    call term_sendkeys(buf, suspend_cmd)
+    call CheckSuspended(buf, 0)
+  endfor
+
+  call term_sendkeys(buf, ":echo g:count\<CR>")
+  call TermWait(buf)
+  call WaitForAssert({-> assert_match('^10', term_getline(buf, 6))})
+
+  " Quit gracefully to dump coverage information.
+  call term_sendkeys(buf, ":qall!\<CR>")
+  call TermWait(buf)
+  " Wait until Vim actually exited and shell shows a prompt
+  call WaitForAssert({-> assert_match('[$#] $', term_getline(buf, '.'))})
+  call StopShellInTerminal(buf)
+
+  exe buf . 'bwipe!'
+  call delete('Xfoo')
+endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

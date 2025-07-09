@@ -4,9 +4,9 @@
 " Contributors: Edwin Fine <efine145_nospam01 at usa dot net>
 "               Pawel 'kTT' Salata <rockplayer.pl@gmail.com>
 "               Ricardo Catalinas Jiménez <jimenezrick@gmail.com>
-" Last Update:  2013-Jul-21
+" Last Update:  2022-Sep-06
 " License:      Vim license
-" URL:          https://github.com/hcs42/vim-erlang
+" URL:          https://github.com/vim-erlang/vim-erlang-runtime
 
 " Note About Usage:
 "   This indentation script works best with the Erlang syntax file created by
@@ -30,7 +30,9 @@ else
 endif
 
 setlocal indentexpr=ErlangIndent()
-setlocal indentkeys+=0=end,0=of,0=catch,0=after,0=when,0=),0=],0=},0=>>
+setlocal indentkeys+=0=end,0=of,0=catch,0=after,0=else,0=when,0=),0=],0=},0=>>
+
+let b:undo_indent = "setl inde< indk<"
 
 " Only define the functions once
 if exists("*ErlangIndent")
@@ -56,7 +58,8 @@ endfunction
 " Line tokenizer library {{{1
 " ======================
 
-" Indtokens are "indentation tokens".
+" Indtokens are "indentation tokens". See their exact format in the
+" documentation of the s:GetTokensFromLine function.
 
 " Purpose:
 "   Calculate the new virtual column after the given segment of a line.
@@ -74,7 +77,7 @@ endfunction
 "   s:CalcVCol("\t'\tx', b", 1, 4, 4)  -> 10
 function! s:CalcVCol(line, first_index, last_index, vcol, tabstop)
 
-  " We copy the relevent segment of the line, otherwise if the line were
+  " We copy the relevant segment of the line, otherwise if the line were
   " e.g. `"\t", term` then the else branch below would consume the `", term`
   " part at once.
   let line = a:line[a:first_index : a:last_index]
@@ -119,9 +122,10 @@ endfunction
 " Returns:
 "   indtokens = [indtoken]
 "   indtoken = [token, vcol, col]
-"   token = string (examples: 'begin', '<variable>', '}')
-"   vcol = integer (the virtual column of the first character of the token)
-"   col = integer
+"   token = string (examples: 'begin', '<quoted_atom>', '}')
+"   vcol = integer (the virtual column of the first character of the token;
+"                   counting starts from 0)
+"   col = integer (counting starts from 0)
 function! s:GetTokensFromLine(line, string_continuation, atom_continuation,
                              \tabstop)
 
@@ -233,8 +237,8 @@ function! s:GetTokensFromLine(line, string_continuation, atom_continuation,
 
     " Two-character tokens
     elseif i + 1 < linelen &&
-         \ index(['->', '<<', '>>', '||', '==', '/=', '=<', '>=', '++', '--',
-         \        '::'],
+         \ index(['->', '<<', '>>', '||', '==', '/=', '=<', '>=', '?=', '++',
+         \        '--', '::'],
          \       a:line[i : i + 1]) != -1
       call add(indtokens, [a:line[i : i + 1], vcol, i])
       let next_i = i + 2
@@ -386,9 +390,12 @@ endfunction
 "   lnum: integer
 "   direction: 'up' | 'down'
 " Returns:
-"   result: [] -- the result is an empty list if we hit the beginning or end
-"                  of the file
-"           | indtoken
+"   result: [[], 0, 0]
+"             -- the result is an empty list if we hit the beginning or end of
+"             the file
+"           | [indtoken, lnum, i]
+"             -- the content, lnum and token index of the next (or previous)
+"             indtoken
 function! s:FindIndToken(lnum, dir)
   let lnum = a:lnum
   while 1
@@ -396,9 +403,12 @@ function! s:FindIndToken(lnum, dir)
     let [lnum, indtokens] = s:TokenizeLine(lnum, a:dir)
     if lnum ==# 0
       " We hit the beginning or end of the file
-      return []
+      return [[], 0, 0]
     elseif !empty(indtokens)
-      return indtokens[a:dir ==# 'up' ? -1 : 0]
+      " We found a non-empty line. If we were moving up, we return the last
+      " token of this line. Otherwise we return the first token if this line.
+      let i = (a:dir ==# 'up' ? len(indtokens) - 1 : 0)
+      return [indtokens[i], lnum, i]
     endif
   endwhile
 endfunction
@@ -417,7 +427,7 @@ function! s:PrevIndToken(lnum, i)
 
   " If the current line has a previous token, return that
   if a:i > 0
-    return s:all_tokens[a:lnum][a:i - 1]
+    return [s:all_tokens[a:lnum][a:i - 1], a:lnum, a:i - 1]
   else
     return s:FindIndToken(a:lnum, 'up')
   endif
@@ -437,7 +447,7 @@ function! s:NextIndToken(lnum, i)
 
   " If the current line has a next token, return that
   if len(s:all_tokens[a:lnum]) > a:i + 1
-    return s:all_tokens[a:lnum][a:i + 1]
+    return [s:all_tokens[a:lnum][a:i + 1], a:lnum, a:i + 1]
   else
     return s:FindIndToken(a:lnum, 'down')
   endif
@@ -518,7 +528,9 @@ endfunction
 "       ok.          % IsLineAtomContinuation = false
 function! s:IsLineAtomContinuation(lnum)
   if has('syntax_items')
-    return synIDattr(synID(a:lnum, 1, 0), 'name') =~# '^erlangQuotedAtom'
+    let syn_name = synIDattr(synID(a:lnum, 1, 0), 'name')
+    return syn_name =~# '^erlangQuotedAtom' ||
+         \ syn_name =~# '^erlangQuotedRecord'
   else
     return 0
   endif
@@ -535,7 +547,7 @@ endfunction
 "   is_standalone: bool
 function! s:IsCatchStandalone(lnum, i)
   call s:Log('    IsCatchStandalone called: lnum=' . a:lnum . ', i=' . a:i)
-  let prev_indtoken = s:PrevIndToken(a:lnum, a:i)
+  let [prev_indtoken, _, _] = s:PrevIndToken(a:lnum, a:i)
 
   " If we hit the beginning of the file, it is not a catch in a try block
   if prev_indtoken == []
@@ -544,12 +556,12 @@ function! s:IsCatchStandalone(lnum, i)
 
   let prev_token = prev_indtoken[0]
 
-  if prev_token =~# '[A-Z_@0-9]'
+  if prev_token =~# '^[A-Z_@0-9]'
     let is_standalone = 0
   elseif prev_token =~# '[a-z]'
     if index(['after', 'and', 'andalso', 'band', 'begin', 'bnot', 'bor', 'bsl',
-            \ 'bsr', 'bxor', 'case', 'catch', 'div', 'not', 'or', 'orelse',
-            \ 'rem', 'try', 'xor'], prev_token) != -1
+            \ 'bsr', 'bxor', 'case', 'catch', 'div', 'maybe', 'not', 'or',
+            \ 'orelse', 'rem', 'try', 'xor'], prev_token) != -1
       " If catch is after these keywords, it is standalone
       let is_standalone = 1
     else
@@ -558,7 +570,7 @@ function! s:IsCatchStandalone(lnum, i)
       "
       " Keywords:
       " - may precede 'catch': end
-      " - may not precede 'catch': fun if of receive when
+      " - may not precede 'catch': else fun if of receive when
       " - unused: cond let query
       let is_standalone = 0
     endif
@@ -567,7 +579,7 @@ function! s:IsCatchStandalone(lnum, i)
     let is_standalone = 0
   else
     " This 'else' branch includes the following tokens:
-    "   -> == /= =< < >= > =:= =/= + - * / ++ -- :: < > ; ( [ { ? = ! . |
+    "   -> == /= =< < >= > ?= =:= =/= + - * / ++ -- :: < > ; ( [ { ? = ! . |
     let is_standalone = 1
   endif
 
@@ -580,6 +592,7 @@ endfunction
 " Purpose:
 "   This function is called when a begin-type element ('begin', 'case',
 "   '[', '<<', etc.) is found. It asks the caller to return if the stack
+"   if already empty.
 " Parameters:
 "   stack: [token]
 "   token: string
@@ -594,7 +607,7 @@ endfunction
 function! s:BeginElementFoundIfEmpty(stack, token, curr_vcol, stored_vcol, sw)
   if empty(a:stack)
     if a:stored_vcol ==# -1
-      call s:Log('    "' . a:token . '" directly preceeds LTI -> return')
+      call s:Log('    "' . a:token . '" directly precedes LTI -> return')
       return [1, a:curr_vcol + a:sw]
     else
       call s:Log('    "' . a:token .
@@ -659,11 +672,14 @@ endfunction
 "   stack: [token]
 "   token: string
 "   stored_vcol: integer
+"   lnum: the line number of the "end of clause" mark (or 0 if we hit the
+"         beginning of the file)
+"   i: the index of the "end of clause" token within its own line
 " Returns:
 "   result: [should_return, indent]
 "   should_return: bool -- if true, the caller should return `indent` to Vim
 "   indent -- integer
-function! s:BeginningOfClauseFound(stack, token, stored_vcol)
+function! s:BeginningOfClauseFound(stack, token, stored_vcol, lnum, i)
   if !empty(a:stack) && a:stack[0] ==# 'when'
     call s:Log('    BeginningOfClauseFound: "when" found in stack')
     call s:Pop(a:stack)
@@ -681,13 +697,45 @@ function! s:BeginningOfClauseFound(stack, token, stored_vcol)
       return [1, a:stored_vcol + shiftwidth()]
     elseif a:stack[0] ==# ';'
       call s:Pop(a:stack)
-      if empty(a:stack)
-        call s:Log('    Stack is ["->", ";"], so LTI is in a function head ' .
-                  \'-> return')
-        return [0, a:stored_vcol]
-      else
+
+      if !empty(a:stack)
         return [1, s:UnexpectedToken(a:token, a:stack)]
       endif
+
+      if a:lnum ==# 0
+        " Set lnum and i to be NextIndToken-friendly
+        let lnum = 1
+        let i = -1 
+      else
+        let lnum = a:lnum
+        let i = a:i
+      endif
+
+      " Are we after a "-spec func() ...;" clause?
+      let [next1_indtoken, next1_lnum, next1_i] = s:NextIndToken(lnum, i)
+      if !empty(next1_indtoken) && next1_indtoken[0] =~# '-'
+        let [next2_indtoken, next2_lnum, next2_i] =
+           \s:NextIndToken(next1_lnum, next1_i)
+        if !empty(next2_indtoken) && next2_indtoken[0] =~# 'spec'
+          let [next3_indtoken, next3_lnum, next3_i] =
+             \s:NextIndToken(next2_lnum, next2_i)
+          if !empty(next3_indtoken)
+            let [next4_indtoken, next4_lnum, next4_i] =
+               \s:NextIndToken(next3_lnum, next3_i)
+            if !empty(next4_indtoken)
+              " Yes, we are.
+              call s:Log('    Stack is ["->", ";"], so LTI is in a "-spec" ' .
+                        \'attribute -> return')
+              return [1, next4_indtoken[1]]
+            endif
+          endif
+        endif
+      endif
+
+      call s:Log('    Stack is ["->", ";"], so LTI is in a function head ' .
+                \'-> return')
+      return [1, a:stored_vcol]
+
     else
       return [1, s:UnexpectedToken(a:token, a:stack)]
     endif
@@ -713,8 +761,8 @@ endfunction
 function! s:SearchEndPair(lnum, curr_col)
   return s:SearchPair(
          \ a:lnum, a:curr_col,
-         \ '\C\<\%(case\|try\|begin\|receive\|if\)\>\|' .
-         \ '\<fun\>\%(\s\|\n\|%.*$\)*(',
+         \ '\C\<\%(case\|try\|begin\|receive\|if\|maybe\)\>\|' .
+         \ '\<fun\>\%(\s\|\n\|%.*$\|[A-Z_@][a-zA-Z_@]*\)*(',
          \ '',
          \ '\<end\>')
 endfunction
@@ -756,7 +804,7 @@ function! s:ErlangCalcIndent2(lnum, stack)
     " Hit the start of the file
     if lnum ==# 0
       let [ret, res] = s:BeginningOfClauseFound(stack, 'beginning_of_file',
-                                               \stored_vcol)
+                                               \stored_vcol, 0, 0)
       if ret | return res | endif
 
       return 0
@@ -775,11 +823,12 @@ function! s:ErlangCalcIndent2(lnum, stack)
       endif
 
       if token ==# '<end_of_clause>'
-        let [ret, res] = s:BeginningOfClauseFound(stack, token, stored_vcol)
+        let [ret, res] = s:BeginningOfClauseFound(stack, token, stored_vcol,
+                                                 \lnum, i)
         if ret | return res | endif
 
         if stored_vcol ==# -1
-          call s:Log('    End of clause directly preceeds LTI -> return')
+          call s:Log('    End of clause directly precedes LTI -> return')
           return 0
         else
           call s:Log('    End of clause (but not end of line) -> return')
@@ -787,7 +836,7 @@ function! s:ErlangCalcIndent2(lnum, stack)
         endif
 
       elseif stack == ['prev_term_plus']
-        if token =~# '[a-zA-Z_@]' ||
+        if token =~# '[a-zA-Z_@#]' ||
          \ token ==# '<string>' || token ==# '<string_start>' ||
          \ token ==# '<quoted_atom>' || token ==# '<quoted_atom_start>'
           call s:Log('    previous token found: curr_vcol + plus = ' .
@@ -801,6 +850,7 @@ function! s:ErlangCalcIndent2(lnum, stack)
         if ret | return res | endif
 
       " case EXPR of BRANCHES end
+      " if BRANCHES end
       " try EXPR catch BRANCHES end
       " try EXPR after BODY end
       " try EXPR catch BRANCHES after BODY end
@@ -809,15 +859,17 @@ function! s:ErlangCalcIndent2(lnum, stack)
       " try EXPR of BRANCHES catch BRANCHES after BODY end
       " receive BRANCHES end
       " receive BRANCHES after BRANCHES end
+      " maybe EXPR end
+      " maybe EXPR else BRANCHES end
 
       " This branch is not Emacs-compatible
-      elseif (index(['of', 'receive', 'after', 'if'], token) != -1 ||
+      elseif (index(['of', 'receive', 'after', 'if', 'else'], token) != -1 ||
            \  (token ==# 'catch' && !s:IsCatchStandalone(lnum, i))) &&
            \ !last_token_of_line &&
            \ (empty(stack) || stack ==# ['when'] || stack ==# ['->'] ||
            \  stack ==# ['->', ';'])
 
-        " If we are after of/receive, but these are not the last
+        " If we are after of/receive/etc, but these are not the last
         " tokens of the line, we want to indent like this:
         "
         "   % stack == []
@@ -843,21 +895,21 @@ function! s:ErlangCalcIndent2(lnum, stack)
         " stack = ['when']  =>  LTI is a guard
         if empty(stack) || stack == ['->', ';']
           call s:Log('    LTI is in a condition after ' .
-                    \'"of/receive/after/if/catch" -> return')
+                    \'"of/receive/after/if/else/catch" -> return')
           return stored_vcol
         elseif stack == ['->']
           call s:Log('    LTI is in a branch after ' .
-                    \'"of/receive/after/if/catch" -> return')
+                    \'"of/receive/after/if/else/catch" -> return')
           return stored_vcol + shiftwidth()
         elseif stack == ['when']
           call s:Log('    LTI is in a guard after ' .
-                    \'"of/receive/after/if/catch" -> return')
+                    \'"of/receive/after/if/else/catch" -> return')
           return stored_vcol + shiftwidth()
         else
           return s:UnexpectedToken(token, stack)
         endif
 
-      elseif index(['case', 'if', 'try', 'receive'], token) != -1
+      elseif index(['case', 'if', 'try', 'receive', 'maybe'], token) != -1
 
         " stack = []  =>  LTI is a condition
         " stack = ['->']  =>  LTI is a branch
@@ -867,45 +919,47 @@ function! s:ErlangCalcIndent2(lnum, stack)
           " pass
         elseif (token ==# 'case' && stack[0] ==# 'of') ||
              \ (token ==# 'if') ||
+             \ (token ==# 'maybe' && stack[0] ==# 'else') ||
              \ (token ==# 'try' && (stack[0] ==# 'of' ||
              \                     stack[0] ==# 'catch' ||
              \                     stack[0] ==# 'after')) ||
              \ (token ==# 'receive')
 
           " From the indentation point of view, the keyword
-          " (of/catch/after/end) before the LTI is what counts, so
+          " (of/catch/after/else/end) before the LTI is what counts, so
           " when we reached these tokens, and the stack already had
-          " a catch/after/end, we didn't modify it.
+          " a catch/after/else/end, we didn't modify it.
           "
-          " This way when we reach case/try/receive (i.e. now),
-          " there is at most one of/catch/after/end token in the
+          " This way when we reach case/try/receive/maybe (i.e. now),
+          " there is at most one of/catch/after/else/end token in the
           " stack.
           if token ==# 'case' || token ==# 'try' ||
-           \ (token ==# 'receive' && stack[0] ==# 'after')
+           \ (token ==# 'receive' && stack[0] ==# 'after') ||
+           \ (token ==# 'maybe' && stack[0] ==# 'else')
             call s:Pop(stack)
           endif
 
           if empty(stack)
             call s:Log('    LTI is in a condition; matching ' .
-                      \'"case/if/try/receive" found')
+                      \'"case/if/try/receive/maybe" found')
             let stored_vcol = curr_vcol + shiftwidth()
           elseif stack[0] ==# 'align_to_begin_element'
             call s:Pop(stack)
             let stored_vcol = curr_vcol
           elseif len(stack) > 1 && stack[0] ==# '->' && stack[1] ==# ';'
             call s:Log('    LTI is in a condition; matching ' .
-                      \'"case/if/try/receive" found')
+                      \'"case/if/try/receive/maybe" found')
             call s:Pop(stack)
             call s:Pop(stack)
             let stored_vcol = curr_vcol + shiftwidth()
           elseif stack[0] ==# '->'
             call s:Log('    LTI is in a branch; matching ' .
-                      \'"case/if/try/receive" found')
+                      \'"case/if/try/receive/maybe" found')
             call s:Pop(stack)
             let stored_vcol = curr_vcol + 2 * shiftwidth()
           elseif stack[0] ==# 'when'
             call s:Log('    LTI is in a guard; matching ' .
-                      \'"case/if/try/receive" found')
+                      \'"case/if/try/receive/maybe" found')
             call s:Pop(stack)
             let stored_vcol = curr_vcol + 2 * shiftwidth() + 2
           endif
@@ -917,8 +971,17 @@ function! s:ErlangCalcIndent2(lnum, stack)
         if ret | return res | endif
 
       elseif token ==# 'fun'
-        let next_indtoken = s:NextIndToken(lnum, i)
+        let [next_indtoken, next_lnum, next_i] = s:NextIndToken(lnum, i)
         call s:Log('    Next indtoken = ' . string(next_indtoken))
+
+        if !empty(next_indtoken) && next_indtoken[0] =~# '^[A-Z_@]'
+          " The "fun" is followed by a variable, so we might have a named fun:
+          " "fun Fun() -> ok end". Thus we take the next token to decide
+          " whether this is a function definition ("fun()") or just a function
+          " reference ("fun Mod:Fun").
+          let [next_indtoken, _, _] = s:NextIndToken(next_lnum, next_i)
+          call s:Log('    Next indtoken = ' . string(next_indtoken))
+        endif
 
         if !empty(next_indtoken) && next_indtoken[0] ==# '('
           " We have an anonymous function definition
@@ -1158,7 +1221,7 @@ function! s:ErlangCalcIndent2(lnum, stack)
 
         if empty(stack)
           call s:Push(stack, ';')
-        elseif index([';', '->', 'when', 'end', 'after', 'catch'],
+        elseif index([';', '->', 'when', 'end', 'after', 'catch', 'else'],
                     \stack[0]) != -1
           " Pass:
           "
@@ -1168,10 +1231,10 @@ function! s:ErlangCalcIndent2(lnum, stack)
           "   should keep that, because they signify the type of the
           "   LTI (branch, condition or guard).
           " - From the indentation point of view, the keyword
-          "   (of/catch/after/end) before the LTI is what counts, so
-          "   if the stack already has a catch/after/end, we don't
-          "   modify it. This way when we reach case/try/receive,
-          "   there will be at most one of/catch/after/end token in
+          "   (of/catch/after/else/end) before the LTI is what counts, so
+          "   if the stack already has a catch/after/else/end, we don't
+          "   modify it. This way when we reach case/try/receive/maybe,
+          "   there will be at most one of/catch/after/else/end token in
           "   the stack.
         else
           return s:UnexpectedToken(token, stack)
@@ -1187,7 +1250,8 @@ function! s:ErlangCalcIndent2(lnum, stack)
           " stack = ['->']  ->  LTI is a condition
           " stack = ['->', ';']  -> LTI is a branch
           call s:Push(stack, '->')
-        elseif index(['->', 'when', 'end', 'after', 'catch'], stack[0]) != -1
+        elseif index(['->', 'when', 'end', 'after', 'catch', 'else'],
+                    \stack[0]) != -1
           " Pass:
           "
           " - If the stack top is another '->', then one '->' is
@@ -1195,10 +1259,10 @@ function! s:ErlangCalcIndent2(lnum, stack)
           " - If the stack top is a 'when', then we should keep
           "   that, because this signifies that LTI is a in a guard.
           " - From the indentation point of view, the keyword
-          "   (of/catch/after/end) before the LTI is what counts, so
-          "   if the stack already has a catch/after/end, we don't
-          "   modify it. This way when we reach case/try/receive,
-          "   there will be at most one of/catch/after/end token in
+          "   (of/catch/after/else/end) before the LTI is what counts, so
+          "   if the stack already has a catch/after/else/end, we don't
+          "   modify it. This way when we reach case/try/receive/maybe,
+          "   there will be at most one of/catch/after/else/end token in
           "   the stack.
         else
           return s:UnexpectedToken(token, stack)
@@ -1228,7 +1292,8 @@ function! s:ErlangCalcIndent2(lnum, stack)
             "       LTI
             call s:Push(stack, token)
           endif
-        elseif index(['->', 'when', 'end', 'after', 'catch'], stack[0]) != -1
+        elseif index(['->', 'when', 'end', 'after', 'catch', 'else'],
+                    \stack[0]) != -1
           " Pass:
           " - If the stack top is another 'when', then one 'when' is
           "   enough.
@@ -1236,21 +1301,63 @@ function! s:ErlangCalcIndent2(lnum, stack)
           "   should keep that, because they signify the type of the
           "   LTI (branch, condition or guard).
           " - From the indentation point of view, the keyword
-          "   (of/catch/after/end) before the LTI is what counts, so
-          "   if the stack already has a catch/after/end, we don't
-          "   modify it. This way when we reach case/try/receive,
-          "   there will be at most one of/catch/after/end token in
+          "   (of/catch/after/else/end) before the LTI is what counts, so
+          "   if the stack already has a catch/after/else/end, we don't
+          "   modify it. This way when we reach case/try/receive/maybe,
+          "   there will be at most one of/catch/after/else/end token in
           "   the stack.
         else
           return s:UnexpectedToken(token, stack)
         endif
 
-      elseif token ==# 'of' || token ==# 'after' ||
+      elseif token ==# 'of' || token ==# 'after' || token ==# 'else' ||
            \ (token ==# 'catch' && !s:IsCatchStandalone(lnum, i))
 
-        if token ==# 'after'
-          " If LTI is between an 'after' and the corresponding
-          " 'end', then let's return
+        if token ==# 'after' || token ==# 'else'
+          " If LTI is between an after/else and the corresponding 'end', then
+          " let's return because calculating the indentation based on
+          " after/else is enough.
+          "
+          " Example:
+          "   receive A after
+          "                 LTI
+          "   maybe A else
+          "               LTI
+          "
+          " Note about Emacs compatibility {{{
+          "
+          " It would be fine to indent the examples above the following way:
+          "
+          "   receive A after
+          "       LTI
+          "   maybe A else
+          "       LTI
+          "
+          " We intend it the way above because that is how Emacs does it.
+          " Also, this is a bit faster.
+          "
+          " We are still not 100% Emacs compatible because of placing the
+          " 'end' after the indented blocks.
+          "
+          " Emacs example:
+          "
+          "   receive A after
+          "                 LTI
+          "             end,
+          "   maybe A else
+          "               LTI
+          "               end % Yes, it's here (in OTP 25.0, might change
+          "                   % later)
+          "
+          " vim-erlang example:
+          "
+          "   receive A after
+          "                 LTI
+          "   end,
+          "   maybe A else
+          "               LTI
+          "   end
+          " }}}
           let [ret, res] = s:BeginElementFoundIfEmpty(stack, token, curr_vcol,
                                                      \stored_vcol, shiftwidth())
           if ret | return res | endif
@@ -1258,7 +1365,8 @@ function! s:ErlangCalcIndent2(lnum, stack)
 
         if empty(stack) || stack[0] ==# '->' || stack[0] ==# 'when'
           call s:Push(stack, token)
-        elseif stack[0] ==# 'catch' || stack[0] ==# 'after' || stack[0] ==# 'end'
+        elseif stack[0] ==# 'catch' || stack[0] ==# 'after' ||
+              \stack[0] ==# 'else' || stack[0] ==# 'end'
           " Pass: From the indentation point of view, the keyword
           " (of/catch/after/end) before the LTI is what counts, so
           " if the stack already has a catch/after/end, we don't
@@ -1327,8 +1435,28 @@ function! ErlangIndent()
     return -1
   endif
 
+  " If the line starts with the comment, and so is the previous non-blank line
+  if currline =~# '^\s*%'
+    let lnum = prevnonblank(v:lnum - 1)
+    if lnum ==# 0
+      call s:Log('First non-empty line of the file -> return 0.')
+      return 0
+    else
+      let ml = matchlist(getline(lnum), '^\(\s*\)%')
+      " If the previous line also starts with a comment, then return the same
+      " indentation that line has. Otherwise exit from this special "if" and
+      " don't care that the current line is a comment.
+      if !empty(ml)
+        let new_col = s:CalcVCol(ml[1], 0, len(ml[1]) - 1, 0, &tabstop)
+        call s:Log('Comment line after another comment line -> ' .
+                  \'use same indent: ' . new_col)
+        return new_col
+      endif
+    endif
+  endif
+
   let ml = matchlist(currline,
-                    \'^\(\s*\)\(\%(end\|of\|catch\|after\)\>\|[)\]}]\|>>\)')
+                    \'^\(\s*\)\(\%(end\|of\|catch\|after\|else\)\>\|[)\]}]\|>>\)')
 
   " If the line has a special beginning, but not a standalone catch
   if !empty(ml) && !(ml[2] ==# 'catch' && s:IsCatchStandalone(v:lnum, 0))
@@ -1379,6 +1507,24 @@ function! ErlangIndent()
 
   return new_col
 
+endfunction
+
+" ErlangShowTokensInLine functions {{{1
+" ================================
+
+" These functions are useful during development.
+
+function! ErlangShowTokensInLine(line)
+  echo "Line: " . a:line
+  let indtokens = s:GetTokensFromLine(a:line, 0, 0, &tabstop)
+  echo "Tokens:"
+  for it in indtokens
+    echo it
+  endfor
+endfunction
+
+function! ErlangShowTokensInCurrentLine()
+  return ErlangShowTokensInLine(getline('.'))
 endfunction
 
 " Cleanup {{{1

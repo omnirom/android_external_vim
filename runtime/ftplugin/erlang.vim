@@ -1,87 +1,120 @@
 " Vim ftplugin file
-" Language:     Erlang
-" Author:       Oscar Hellström <oscar@oscarh.net>
-" Contributors: Ricardo Catalinas Jiménez <jimenezrick@gmail.com>
+" Language:     Erlang (http://www.erlang.org)
+" Maintainer:   Csaba Hoch <csaba.hoch@gmail.com>
+" Author:       Oscar HellstrÃ¶m <oscar@oscarh.net>
+" Contributors: Ricardo Catalinas JimÃ©nez <jimenezrick@gmail.com>
 "               Eduardo Lopez (http://github.com/tapichu)
+"               Arvid Bjurklint (http://github.com/slarwise)
+"               PaweÅ‚ Zacharek (http://github.com/subc2)
+"               Riley Bruins (http://github.com/ribru17) ('commentstring')
+" Last Update:  2024 May 23
 " License:      Vim license
-" Version:      2012/01/25
+" URL:          https://github.com/vim-erlang/vim-erlang-runtime
 
 if exists('b:did_ftplugin')
-	finish
-else
-	let b:did_ftplugin = 1
+  finish
 endif
-
-if exists('s:did_function_definitions')
-	call s:SetErlangOptions()
-	finish
-else
-	let s:did_function_definitions = 1
-endif
+let b:did_ftplugin = 1
 
 let s:cpo_save = &cpo
 set cpo&vim
 
-if !exists('g:erlang_keywordprg')
-	let g:erlang_keywordprg = 'erl -man'
+let &l:keywordprg = get(g:, 'erlang_keywordprg', 'erl -man')
+
+if get(g:, 'erlang_folding', 0)
+  setlocal foldmethod=expr
+  setlocal foldexpr=GetErlangFold(v:lnum)
+  setlocal foldtext=ErlangFoldText()
 endif
 
-if !exists('g:erlang_folding')
-	let g:erlang_folding = 0
+setlocal comments=:%%%,:%%,:%
+setlocal commentstring=%\ %s
+
+setlocal formatoptions+=ro
+
+if get(g:, 'erlang_extend_path', 1)
+  " typical erlang.mk paths
+  let &l:path = join([
+        \ 'deps/*/include',
+        \ 'deps/*/src',
+        \ 'deps/*/test',
+        \ 'deps/*/apps/*/include',
+        \ 'deps/*/apps/*/src',
+        \ &g:path], ',')
+  " typical rebar3 paths
+  let &l:path = join([
+        \ 'apps/*/include',
+        \ 'apps/*/src',
+        \ '_build/default/lib/*/src',
+        \ '_build/default/*/include',
+        \ &l:path], ',')
+  " typical erlang paths
+  let &l:path = join(['include', 'src', 'test', &l:path], ',')
+
+  set wildignore+=*/.erlang.mk/*,*.beam
 endif
 
-let s:erlang_fun_begin = '^\a\w*(.*$'
+setlocal suffixesadd=.erl,.hrl
+
+let &l:include = '^\s*-\%(include\|include_lib\)\s*("\zs\f*\ze")'
+let &l:define  = '^\s*-\%(define\|record\|type\|opaque\)'
+
+let s:erlang_fun_begin = '^\l[A-Za-z0-9_@]*(.*$'
 let s:erlang_fun_end   = '^[^%]*\.\s*\(%.*\)\?$'
 
-function s:SetErlangOptions()
-	if g:erlang_folding
-		setlocal foldmethod=expr
-		setlocal foldexpr=GetErlangFold(v:lnum)
-		setlocal foldtext=ErlangFoldText()
-	endif
+if !exists('*GetErlangFold')
+  function GetErlangFold(lnum)
+    let lnum = a:lnum
+    let line = getline(lnum)
 
-	setlocal comments=:%%%,:%%,:%
-	setlocal commentstring=%%s
+    if line =~ s:erlang_fun_end
+      return '<1'
+    endif
 
-	setlocal formatoptions+=ro
-	let &l:keywordprg = g:erlang_keywordprg
-endfunction
+    if line =~ s:erlang_fun_begin && foldlevel(lnum - 1) == 1
+      return '1'
+    endif
 
-function GetErlangFold(lnum)
-	let lnum = a:lnum
-	let line = getline(lnum)
+    if line =~ s:erlang_fun_begin
+      return '>1'
+    endif
 
-	if line =~ s:erlang_fun_end
-		return '<1'
-	endif
+    return '='
+  endfunction
+endif
 
-	if line =~ s:erlang_fun_begin && foldlevel(lnum - 1) == 1
-		return '1'
-	endif
+if !exists('*ErlangFoldText')
+  function ErlangFoldText()
+    let line    = getline(v:foldstart)
+    let foldlen = v:foldend - v:foldstart + 1
+    let lines   = ' ' . foldlen . ' lines: ' . substitute(line, "[\ \t]*", '', '')
+    if foldlen < 10
+      let lines = ' ' . lines
+    endif
+    let retval = '+' . v:folddashes . lines
 
-	if line =~ s:erlang_fun_begin
-		return '>1'
-	endif
+    return retval
+  endfunction
+endif
 
-	return '='
-endfunction
+" The following lines enable the macros/matchit.vim plugin for extended
+" matching with the % key.
+let b:match_ignorecase = 0
+let b:match_words =
+  \ '\<\%(begin\|case\|fun\|if\|maybe\|receive\|try\)\>' .
+  \ ':\<\%(after\|catch\|else\|of\)\>' .
+  \ ':\<end\>,' .
+  \ '^\l[A-Za-z0-9_@]*' .
+  \ ':^\%(\%(\t\| \{' . shiftwidth() .
+  \ '}\)\%([^\t\ %][^%]*\)\?\)\?;\s*\%(%.*\)\?$\|\.[\t\ %]\|\.$'
+let b:match_skip = 's:comment\|string\|erlangmodifier\|erlangquotedatom'
 
-function ErlangFoldText()
-	let line    = getline(v:foldstart)
-	let foldlen = v:foldend - v:foldstart + 1
-	let lines   = ' ' . foldlen . ' lines: ' . substitute(line, "[\ \t]*", '', '')
-	if foldlen < 10
-		let lines = ' ' . lines
-	endif
-	let retval = '+' . v:folddashes . lines
-
-	return retval
-endfunction
-
-call s:SetErlangOptions()
-
-let b:undo_ftplugin = "setlocal foldmethod< foldexpr< foldtext<"
-	\ . " comments< commentstring< formatoptions<"
+let b:undo_ftplugin = "setlocal keywordprg< foldmethod< foldexpr< foldtext<"
+      \ . " comments< commentstring< formatoptions< suffixesadd< include<"
+      \ . " define<"
+      \ . " | unlet b:match_ignorecase b:match_words b:match_skip"
 
 let &cpo = s:cpo_save
 unlet s:cpo_save
+
+" vim: sw=2 et

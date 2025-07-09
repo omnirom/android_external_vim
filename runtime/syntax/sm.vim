@@ -1,9 +1,11 @@
 " Vim syntax file
 " Language:	sendmail
-" Maintainer:	Charles E. Campbell <NdrOchipS@PcampbellAfamily.Mbiz>
+" Maintainer:	This runtime file is looking for a new maintainer.
+" Former Maintainer: Charles E. Campbell
 " Last Change:	Oct 25, 2016
-" Version:	8
-" URL:	http://www.drchip.org/astronaut/vim/index.html#SYNTAX_SM
+"   2024 Feb 19 by Vim Project (announce adoption)
+" Version:	9
+" Former URL:	http://www.drchip.org/astronaut/vim/index.html#SYNTAX_SM
 if exists("b:current_syntax")
   finish
 endif

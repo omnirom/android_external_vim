@@ -1,11 +1,10 @@
 " Tests for startup using utf-8.
 
-source shared.vim
-source screendump.vim
+source util/screendump.vim
 
 func Test_read_stdin_utf8()
   let linesin = ['テスト', '€ÀÈÌÒÙ']
-  call writefile(linesin, 'Xtestin')
+  call writefile(linesin, 'Xtestin', 'D')
   let before = [
 	\ 'set enc=utf-8',
 	\ 'set fencs=cp932,utf-8',
@@ -25,24 +24,22 @@ func Test_read_stdin_utf8()
   else
     call assert_equal('', 'RunVimPiped failed.')
   endif
+
   call delete('Xtestout')
-  call delete('Xtestin')
 endfunc
 
 func Test_read_fifo_utf8()
-  if !has('unix')
-    return
-  endif
+  CheckUnix
   " Using bash/zsh's process substitution.
   if executable('bash')
     set shell=bash
   elseif executable('zsh')
     set shell=zsh
   else
-    return
+    throw 'Skipped: bash or zsh is required'
   endif
   let linesin = ['テスト', '€ÀÈÌÒÙ']
-  call writefile(linesin, 'Xtestin')
+  call writefile(linesin, 'Xtestin', 'D')
   let before = [
 	\ 'set enc=utf-8',
 	\ 'set fencs=cp932,utf-8',
@@ -57,14 +54,39 @@ func Test_read_fifo_utf8()
   else
     call assert_equal('', 'RunVim failed.')
   endif
+
   call delete('Xtestout')
-  call delete('Xtestin')
+endfunc
+
+func Test_detect_fifo()
+  CheckUnix
+  " Using bash/zsh's process substitution.
+  if executable('bash')
+    set shell=bash
+  elseif executable('zsh')
+    set shell=zsh
+  else
+    throw 'Skipped: bash or zsh is required'
+  endif
+  let linesin = ['one', 'two']
+  call writefile(linesin, 'Xtestin_fifo', 'D')
+  let after = [
+	\ 'call writefile(split(execute(":mess"), "\\n"), "Xtestout")',
+	\ 'quit!',
+	\ ]
+  if RunVim([], after, '<(cat Xtestin_fifo)')
+    let lines = readfile('Xtestout')
+    call assert_match('\[fifo\]', lines[0])
+    call assert_match('\[fifo\]', lines[1])
+  else
+    call assert_equal('', 'RunVim failed.')
+  endif
+
+  call delete('Xtestout')
 endfunc
 
 func Test_detect_ambiwidth()
-  if !CanRunVimInTerminal()
-    throw 'Skipped: cannot run Vim in a terminal window'
-  endif
+  CheckRunVimInTerminal
 
   " Use the title termcap entries to output the escape sequence.
   call writefile([
@@ -72,12 +94,13 @@ func Test_detect_ambiwidth()
 	\ 'set ambiwidth=double',
 	\ 'call test_option_not_set("ambiwidth")',
 	\ 'redraw',
-	\ ], 'Xscript')
-  let buf = RunVimInTerminal('-S Xscript', {})
-  call term_wait(buf)
+	\ ], 'Xscript', 'D')
+  let buf = RunVimInTerminal('-S Xscript', #{keep_t_u7: 1})
+  call TermWait(buf)
   call term_sendkeys(buf, "S\<C-R>=&ambiwidth\<CR>\<Esc>")
   call WaitForAssert({-> assert_match('single', term_getline(buf, 1))})
 
   call StopVimInTerminal(buf)
-  call delete('Xscript')
 endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

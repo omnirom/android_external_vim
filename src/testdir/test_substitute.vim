@@ -1,4 +1,32 @@
-" Tests for multi-line regexps with ":s".
+" Tests for the substitute (:s) command
+
+source util/screendump.vim
+
+" NOTE: This needs to be the first test to be
+"       run in the file, since it depends on
+"       that the previous substitution atom
+"       was not yet set.
+"
+" recursive call of :s and sub-replace special
+" (did cause heap-use-after free in < v9.0.2121)
+func Test_aaaa_substitute_expr_recursive_special()
+  func R()
+    " FIXME: leaving out the 'n' flag leaks memory, why?
+    %s/./\='.'/gn
+  endfunc
+  new Xfoobar_UAF
+  put ='abcdef'
+  let bufnr = bufnr('%')
+  try
+    silent! :s/./~\=R()/0
+    "call assert_fails(':s/./~\=R()/0', 'E939:')
+    let @/='.'
+    ~g
+  catch /^Vim\%((\a\+)\)\=:E565:/
+  endtry
+  delfunc R
+  exe bufnr .. "bw!"
+endfunc
 
 func Test_multiline_subst()
   enew!
@@ -51,10 +79,12 @@ func Test_substitute_variants()
 	\ { 'cmd': ':s/t/r/cg', 'exp': 'Tesring srring', 'prompt': 'a' },
 	\ { 'cmd': ':s/t/r/ci', 'exp': 'resting string', 'prompt': 'y' },
 	\ { 'cmd': ':s/t/r/cI', 'exp': 'Tesring string', 'prompt': 'y' },
+	\ { 'cmd': ':s/t/r/c', 'exp': 'Testing string', 'prompt': 'n' },
 	\ { 'cmd': ':s/t/r/cn', 'exp': ln },
 	\ { 'cmd': ':s/t/r/cp', 'exp': 'Tesring string', 'prompt': 'y' },
 	\ { 'cmd': ':s/t/r/cl', 'exp': 'Tesring string', 'prompt': 'y' },
 	\ { 'cmd': ':s/t/r/gc', 'exp': 'Tesring srring', 'prompt': 'a' },
+	\ { 'cmd': ':s/i/I/gc', 'exp': 'TestIng string', 'prompt': 'l' },
 	\ { 'cmd': ':s/foo/bar/ge', 'exp': ln },
 	\ { 'cmd': ':s/t/r/g', 'exp': 'Tesring srring' },
 	\ { 'cmd': ':s/t/r/gi', 'exp': 'resring srring' },
@@ -86,6 +116,7 @@ func Test_substitute_variants()
 	\ { 'cmd': ':s//r/rp', 'exp': 'Testr string' },
 	\ { 'cmd': ':s//r/rl', 'exp': 'Testr string' },
 	\ { 'cmd': ':s//r/r', 'exp': 'Testr string' },
+	\ { 'cmd': ':s/i/I/gc', 'exp': 'Testing string', 'prompt': 'q' },
 	\]
 
   for var in variants
@@ -135,9 +166,18 @@ endfunc
 
 func Test_substitute_repeat()
   " This caused an invalid memory access.
-  split Xfile
+  split Xsubfile
   s/^/x
   call feedkeys("Qsc\<CR>y", 'tx')
+  bwipe!
+endfunc
+
+" Test :s with ? as delimiter.
+func Test_substitute_question_delimiter()
+  new
+  call setline(1, '??:??')
+  %s?\?\??!!?g
+  call assert_equal('!!:!!', getline(1))
   bwipe!
 endfunc
 
@@ -176,6 +216,10 @@ func Test_substitute_join()
   call assert_equal(["foo\tbarbar\<C-H>foo"], getline(1, '$'))
   call assert_equal('\n', histget("search", -1))
 
+  call setline(1, ['foo', 'bar', 'baz', 'qux'])
+  call execute('1,2s/\n//')
+  call assert_equal(['foobarbaz', 'qux'], getline(1, '$'))
+
   bwipe!
 endfunc
 
@@ -190,6 +234,12 @@ func Test_substitute_count()
 
   call assert_fails('s/foo/bar/0', 'E939:')
 
+  call setline(1, ['foo foo', 'foo foo', 'foo foo', 'foo foo', 'foo foo'])
+  2,4s/foo/bar/ 10
+  call assert_equal(['foo foo', 'foo foo', 'foo foo', 'bar foo', 'bar foo'],
+        \           getline(1, '$'))
+
+  call assert_fails('s/./b/2147483647', 'E1510:')
   bwipe!
 endfunc
 
@@ -208,6 +258,10 @@ func Test_substitute_flag_n()
   " No substitution should have been done.
   call assert_equal(lines, getline(1, '$'))
 
+  %delete _
+  call setline(1, ['A', 'Bar', 'Baz'])
+  call assert_equal("\n1 match on 1 line", execute('s/\nB\@=//gn'))
+
   bwipe!
 endfunc
 
@@ -217,10 +271,18 @@ func Test_substitute_errors()
 
   call assert_fails('s/FOO/bar/', 'E486:')
   call assert_fails('s/foo/bar/@', 'E488:')
-  call assert_fails('s/\(/bar/', 'E476:')
+  call assert_fails('s/\(/bar/', 'E54:')
+  call assert_fails('s afooabara', 'E146:')
+  call assert_fails('s\\a', 'E10:')
 
   setl nomodifiable
   call assert_fails('s/foo/bar/', 'E21:')
+
+  call assert_fails("let s=substitute([], 'a', 'A', 'g')", 'E730:')
+  call assert_fails("let s=substitute('abcda', [], 'A', 'g')", 'E730:')
+  call assert_fails("let s=substitute('abcda', 'a', [], 'g')", 'E730:')
+  call assert_fails("let s=substitute('abcda', 'a', 'A', [])", 'E730:')
+  call assert_fails("let s=substitute('abc', '\\%(', 'A', 'g')", 'E53:')
 
   bwipe!
 endfunc
@@ -257,6 +319,9 @@ func Test_sub_replace_1()
   call assert_equal("x\<C-M>x", substitute('xXx', 'X', "\r", ''))
   call assert_equal("YyyY", substitute('Y', 'Y', '\L\uyYy\l\EY', ''))
   call assert_equal("zZZz", substitute('Z', 'Z', '\U\lZzZ\u\Ez', ''))
+  " \v or \V after $
+  call assert_equal('abxx', substitute('abcd', 'xy$\v|cd$', 'xx', ''))
+  call assert_equal('abxx', substitute('abcd', 'xy$\V\|cd\$', 'xx', ''))
 endfunc
 
 func Test_sub_replace_2()
@@ -337,7 +402,7 @@ func Test_sub_replace_5()
 		\ substitute('A123456789',
 		\ 'A\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)',
 		\ '\=string([submatch(0, 1), submatch(9, 1), ' .
-		\ 'submatch(8, 1), submatch(7, 1), submatch(6, 1), ' .
+		\ 'submatch(8, 1), 7->submatch(1), submatch(6, 1), ' .
 		\ 'submatch(5, 1), submatch(4, 1), submatch(3, 1), ' .
 		\ 'submatch(2, 1), submatch(1, 1)])',
 		\ ''))
@@ -405,6 +470,38 @@ func Test_sub_replace_10()
    call assert_equal('1aaa', substitute('123', '1\zs\|[23]', 'a', 'g'))
 endfunc
 
+func SubReplacer(text, submatches)
+  return a:text .. a:submatches[0] .. a:text
+endfunc
+func SubReplacerVar(text, ...)
+  return a:text .. a:1[0] .. a:text
+endfunc
+def SubReplacerVar9(text: string, ...args: list<list<string>>): string
+  return text .. args[0][0] .. text
+enddef
+func SubReplacer20(t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, submatches)
+  return a:t3 .. a:submatches[0] .. a:t11
+endfunc
+
+func Test_substitute_partial()
+  call assert_equal('1foo2foo3', substitute('123', '2', function('SubReplacer', ['foo']), 'g'))
+  call assert_equal('1foo2foo3', substitute('123', '2', function('SubReplacerVar', ['foo']), 'g'))
+  call assert_equal('1foo2foo3', substitute('123', '2', function('SubReplacerVar9', ['foo']), 'g'))
+
+  " 19 arguments plus one is just OK
+  let Replacer = function('SubReplacer20', repeat(['foo'], 19))
+  call assert_equal('1foo2foo3', substitute('123', '2', Replacer, 'g'))
+
+  " 20 arguments plus one is too many
+  let Replacer = function('SubReplacer20', repeat(['foo'], 20))
+  call assert_fails("call substitute('123', '2', Replacer, 'g')", 'E118:')
+endfunc
+
+func Test_substitute_float()
+  call assert_equal('number 1.23', substitute('number ', '$', { -> 1.23 }, ''))
+  vim9 assert_equal('number 1.23', substitute('number ', '$', () => 1.23, ''))
+endfunc
+
 " Tests for *sub-replace-special* and *sub-replace-expression* on :substitute.
 
 " Execute a list of :substitute command tests
@@ -447,7 +544,8 @@ func Test_sub_cmd_1()
 	      \ ['sSs', 's/S/\c/', ['scs']],
 	      \ ['tTt', "s/T/\<C-V>\<C-J>/", ["t\<C-V>\<C-J>t"]],
 	      \ ['U', 's/U/\L\uuUu\l\EU/', ['UuuU']],
-	      \ ['V', 's/V/\U\lVvV\u\Ev/', ['vVVv']]
+	      \ ['V', 's/V/\U\lVvV\u\Ev/', ['vVVv']],
+	      \ ['\', 's/\\/\\\\/', ['\\']]
 	      \ ]
   call Run_SubCmd_Tests(tests)
 endfunc
@@ -478,7 +576,8 @@ func Test_sub_cmd_2()
 	      \ ['sSs', 's/S/\c/', ['scs']],
 	      \ ['tTt', "s/T/\<C-V>\<C-J>/", ["t\<C-V>\<C-J>t"]],
 	      \ ['U', 's/U/\L\uuUu\l\EU/', ['UuuU']],
-	      \ ['V', 's/V/\U\lVvV\u\Ev/', ['vVVv']]
+	      \ ['V', 's/V/\U\lVvV\u\Ev/', ['vVVv']],
+	      \ ['\', 's/\\/\\\\/', ['\\']]
 	      \ ]
   call Run_SubCmd_Tests(tests)
 endfunc
@@ -504,7 +603,7 @@ func Test_sub_cmd_3()
   call Run_SubCmd_Tests(tests)
 endfunc
 
-" Test for submatch() on :substitue.
+" Test for submatch() on :substitute.
 func Test_sub_cmd_4()
   set magic&
   set cpo&
@@ -584,7 +683,7 @@ func Test_sub_cmd_7()
   call Run_SubCmd_Tests(tests)
 
   exe "normal oQ\nQ\<Esc>k"
-  call assert_fails('s/Q[^\n]Q/\=submatch(0)."foobar"/', 'E486')
+  call assert_fails('s/Q[^\n]Q/\=submatch(0)."foobar"/', 'E486:')
   enew!
 endfunc
 
@@ -626,17 +725,34 @@ func Test_sub_cmd_9()
   bw!
 endfunc
 
+func Test_sub_highlight_zero_match()
+  CheckScreendump
+  CheckRunVimInTerminal
+
+  let lines =<< trim END
+    call setline(1, ['one', 'two', 'three'])
+  END
+  call writefile(lines, 'XscriptSubHighlight', 'D')
+  let buf = RunVimInTerminal('-S XscriptSubHighlight', #{rows: 8, cols: 60})
+  call term_sendkeys(buf, ":%s/^/   /c\<CR>")
+  call VerifyScreenDump(buf, 'Test_sub_highlight_zer_match_1', {})
+
+  call term_sendkeys(buf, "\<Esc>")
+  call StopVimInTerminal(buf)
+endfunc
+
 func Test_nocatch_sub_failure_handling()
-  " normal error results in all replacements 
+  " normal error results in all replacements
   func Foo()
     foobar
   endfunc
   new
   call setline(1, ['1 aaa', '2 aaa', '3 aaa'])
-  %s/aaa/\=Foo()/g
+  " need silent! to avoid a delay when entering Insert mode
+  silent! %s/aaa/\=Foo()/g
   call assert_equal(['1 0', '2 0', '3 0'], getline(1, 3))
 
-  " Trow without try-catch causes abort after the first line.
+  " Throw without try-catch causes abort after the first line.
   " We cannot test this, since it would stop executing the test script.
 
   " try/catch does not result in any changes
@@ -689,7 +805,7 @@ func Test_replace_keeppatterns()
   a
 foobar
 
-substitute foo asdf
+substitute foo asdf foo
 
 one two
 .
@@ -698,21 +814,716 @@ one two
   /^substitute
   s/foo/bar/
   call assert_equal('foo', @/)
-  call assert_equal('substitute bar asdf', getline('.'))
+  call assert_equal('substitute bar asdf foo', getline('.'))
 
   /^substitute
   keeppatterns s/asdf/xyz/
   call assert_equal('^substitute', @/)
-  call assert_equal('substitute bar xyz', getline('.'))
+  call assert_equal('substitute bar xyz foo', getline('.'))
+
+  /^substitute
+  &
+  call assert_equal('^substitute', @/)
+  call assert_equal('substitute bar xyz bar', getline('.'))
 
   exe "normal /bar /e\<CR>"
   call assert_equal(15, col('.'))
   normal -
   keeppatterns /xyz
   call assert_equal('bar ', @/)
-  call assert_equal('substitute bar xyz', getline('.'))
+  call assert_equal('substitute bar xyz bar', getline('.'))
   exe "normal 0dn"
-  call assert_equal('xyz', getline('.'))
+  call assert_equal('xyz bar', getline('.'))
 
   close!
 endfunc
+
+func Test_sub_beyond_end()
+  new
+  call setline(1, '#')
+  let @/ = '^#\n\zs'
+  s///e
+  call assert_equal('#', getline(1))
+  bwipe!
+endfunc
+
+" Test for repeating last substitution using :~ and :&r
+func Test_repeat_last_sub()
+  new
+  call setline(1, ['blue green yellow orange white'])
+  s/blue/red/
+  let @/ = 'yellow'
+  ~
+  let @/ = 'white'
+  :&r
+  let @/ = 'green'
+  s//gray
+  call assert_equal('red gray red orange red', getline(1))
+  close!
+endfunc
+
+" Test for Vi compatible substitution:
+"     \/{string}/, \?{string}? and \&{string}&
+func Test_sub_vi_compatibility()
+  new
+  call setline(1, ['blue green yellow orange blue'])
+  let @/ = 'orange'
+  s\/white/
+  let @/ = 'blue'
+  s\?amber?
+  let @/ = 'white'
+  s\&green&
+  call assert_equal('amber green yellow white green', getline(1))
+  close!
+
+  call assert_fails('vim9cmd s\/white/', 'E1270:')
+  call assert_fails('vim9cmd s\?white?', 'E1270:')
+  call assert_fails('vim9cmd s\&white&', 'E1270:')
+endfunc
+
+" Test for substitute with the new text longer than the original text
+func Test_sub_expand_text()
+  new
+  call setline(1, 'abcabcabcabcabcabcabcabc')
+  s/b/\=repeat('B', 10)/g
+  call assert_equal(repeat('aBBBBBBBBBBc', 8), getline(1))
+  close!
+endfunc
+
+" Test for command failures when the last substitute pattern is not set.
+func Test_sub_with_no_last_pat()
+  let lines =<< trim [SCRIPT]
+    call assert_fails('~', 'E33:')
+    call assert_fails('s//abc/g', 'E35:')
+    call assert_fails('s\/bar', 'E35:')
+    call assert_fails('s\&bar&', 'E33:')
+    call writefile(v:errors, 'Xresult')
+    qall!
+  [SCRIPT]
+  call writefile(lines, 'Xscript', 'D')
+  if RunVim([], [], '--clean -S Xscript')
+    call assert_equal([], readfile('Xresult'))
+  endif
+
+  let lines =<< trim [SCRIPT]
+    set cpo+=/
+    call assert_fails('s/abc/%/', 'E33:')
+    call writefile(v:errors, 'Xresult')
+    qall!
+  [SCRIPT]
+  call writefile(lines, 'Xscript')
+  if RunVim([], [], '--clean -S Xscript')
+    call assert_equal([], readfile('Xresult'))
+  endif
+
+  call delete('Xresult')
+endfunc
+
+func Test_substitute()
+  call assert_equal('a１a２a３a', substitute('１２３', '\zs', 'a', 'g'))
+  " Substitute with special keys
+  call assert_equal("a\<End>c", substitute('abc', "a.c", "a\<End>c", ''))
+endfunc
+
+func Test_substitute_expr()
+  let g:val = 'XXX'
+  call assert_equal('XXX', substitute('yyy', 'y*', '\=g:val', ''))
+  call assert_equal('XXX', substitute('yyy', 'y*', {-> g:val}, ''))
+  call assert_equal("-\u1b \uf2-", substitute("-%1b %f2-", '%\(\x\x\)',
+			   \ '\=nr2char("0x" . submatch(1))', 'g'))
+  call assert_equal("-\u1b \uf2-", substitute("-%1b %f2-", '%\(\x\x\)',
+			   \ {-> nr2char("0x" . submatch(1))}, 'g'))
+
+  call assert_equal('231', substitute('123', '\(.\)\(.\)\(.\)',
+	\ {-> submatch(2) . submatch(3) . submatch(1)}, ''))
+
+  func Recurse()
+    return substitute('yyy', 'y\(.\)y', {-> submatch(1)}, '')
+  endfunc
+  " recursive call works
+  call assert_equal('-y-x-', substitute('xxx', 'x\(.\)x', {-> '-' . Recurse() . '-' . submatch(1) . '-'}, ''))
+
+  call assert_fails("let s=submatch([])", 'E745:')
+  call assert_fails("let s=submatch(2, [])", 'E745:')
+endfunc
+
+func Test_invalid_submatch()
+  " This was causing invalid memory access in Vim-7.4.2232 and older
+  call assert_fails("call substitute('x', '.', {-> submatch(10)}, '')", 'E935:')
+  call assert_fails('eval submatch(-1)', 'E935:')
+  call assert_equal('', submatch(0))
+  call assert_equal('', submatch(1))
+  call assert_equal([], submatch(0, 1))
+  call assert_equal([], submatch(1, 1))
+endfunc
+
+func Test_submatch_list_concatenate()
+  let pat = 'A\(.\)'
+  let Rep = {-> string([submatch(0, 1)] + [[submatch(1)]])}
+  call substitute('A1', pat, Rep, '')->assert_equal("[['A1'], ['1']]")
+endfunc
+
+func Test_substitute_expr_arg()
+  call assert_equal('123456789-123456789=', substitute('123456789',
+	\ '\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)',
+	\ {m -> m[0] . '-' . m[1] . m[2] . m[3] . m[4] . m[5] . m[6] . m[7] . m[8] . m[9] . '='}, ''))
+
+  call assert_equal('123456-123456=789', substitute('123456789',
+	\ '\(.\)\(.\)\(.\)\(a*\)\(n*\)\(.\)\(.\)\(.\)\(x*\)',
+	\ {m -> m[0] . '-' . m[1] . m[2] . m[3] . m[4] . m[5] . m[6] . m[7] . m[8] . m[9] . '='}, ''))
+
+  call assert_equal('123456789-123456789x=', substitute('123456789',
+	\ '\(.\)\(.\)\(.*\)',
+	\ {m -> m[0] . '-' . m[1] . m[2] . m[3] . 'x' . m[4] . m[5] . m[6] . m[7] . m[8] . m[9] . '='}, ''))
+
+  call assert_fails("call substitute('xxx', '.', {m -> string(add(m, 'x'))}, '')", 'E742:')
+  call assert_fails("call substitute('xxx', '.', {m -> string(insert(m, 'x'))}, '')", 'E742:')
+  call assert_fails("call substitute('xxx', '.', {m -> string(extend(m, ['x']))}, '')", 'E742:')
+  call assert_fails("call substitute('xxx', '.', {m -> string(remove(m, 1))}, '')", 'E742:')
+endfunc
+
+" Test for using a function to supply the substitute string
+func Test_substitute_using_func()
+  func Xfunc()
+    return '1234'
+  endfunc
+  call assert_equal('a1234f', substitute('abcdef', 'b..e',
+        \ function("Xfunc"), ''))
+  delfunc Xfunc
+endfunc
+
+" Test for using submatch() with a multiline match
+func Test_substitute_multiline_submatch()
+  new
+  call setline(1, ['line1', 'line2', 'line3', 'line4'])
+  %s/^line1\(\_.\+\)line4$/\=submatch(1)/
+  call assert_equal(['', 'line2', 'line3', ''], getline(1, '$'))
+  close!
+endfunc
+
+func Test_substitute_skipped_range()
+  new
+  if 0
+    /1/5/2/2/\n
+  endif
+  call assert_equal([0, 1, 1, 0, 1], getcurpos())
+  bwipe!
+endfunc
+
+" Test using the 'gdefault' option (when on, flag 'g' is default on).
+func Test_substitute_gdefault()
+  new
+
+  " First check without 'gdefault'
+  call setline(1, 'foo bar foo')
+  s/foo/FOO/
+  call assert_equal('FOO bar foo', getline(1))
+  call setline(1, 'foo bar foo')
+  s/foo/FOO/g
+  call assert_equal('FOO bar FOO', getline(1))
+  call setline(1, 'foo bar foo')
+  s/foo/FOO/gg
+  call assert_equal('FOO bar foo', getline(1))
+
+  " Then check with 'gdefault'
+  set gdefault
+  call setline(1, 'foo bar foo')
+  s/foo/FOO/
+  call assert_equal('FOO bar FOO', getline(1))
+  call setline(1, 'foo bar foo')
+  s/foo/FOO/g
+  call assert_equal('FOO bar foo', getline(1))
+  call setline(1, 'foo bar foo')
+  s/foo/FOO/gg
+  call assert_equal('FOO bar FOO', getline(1))
+
+  " Setting 'compatible' should reset 'gdefault'
+  call assert_equal(1, &gdefault)
+  set compatible
+  call assert_equal(0, &gdefault)
+  set nocompatible
+  call assert_equal(0, &gdefault)
+
+  bw!
+endfunc
+
+" This was using "old_sub" after it was freed.
+func Test_using_old_sub()
+  set compatible maxfuncdepth=10
+  new
+  call setline(1, 'some text.')
+  func Repl()
+    ~
+    s/
+  endfunc
+  silent! s/\%')/\=Repl()
+
+  delfunc Repl
+  bwipe!
+  set nocompatible
+endfunc
+
+" This was switching windows in between computing the length and using it.
+func Test_sub_change_window()
+  silent! lfile
+  sil! norm o0000000000000000000000000000000000000000000000000000
+  func Repl()
+    lopen
+  endfunc
+  silent!  s/\%')/\=Repl()
+  bwipe!
+  bwipe!
+  delfunc Repl
+endfunc
+
+" This was undoign a change in between computing the length and using it.
+func Do_Test_sub_undo_change()
+  new
+  norm o0000000000000000000000000000000000000000000000000000
+  silent! s/\%')/\=Repl()
+  bwipe!
+endfunc
+
+func Test_sub_undo_change()
+  func Repl()
+    silent! norm g-
+  endfunc
+  call Do_Test_sub_undo_change()
+
+  func! Repl()
+    silent earlier
+  endfunc
+  call Do_Test_sub_undo_change()
+
+  delfunc Repl
+endfunc
+
+" This was opening a command line window from the expression
+func Test_sub_open_cmdline_win()
+  " the error only happens in a very specific setup, run a new Vim instance to
+  " get a clean starting point.
+  let lines =<< trim [SCRIPT]
+    set vb t_vb=
+    norm o0000000000000000000000000000000000000000000000000000
+    func Replace()
+      norm q/
+    endfunc
+    s/\%')/\=Replace()
+    redir >Xresult
+    messages
+    redir END
+    qall!
+  [SCRIPT]
+  call writefile(lines, 'Xscript', 'D')
+  if RunVim([], [], '-u NONE -S Xscript')
+    call assert_match('E565: Not allowed to change text or change window',
+          \ readfile('Xresult')->join('XX'))
+  endif
+
+  call delete('Xresult')
+endfunc
+
+" This was editing a script file from the expression
+func Test_sub_edit_scriptfile()
+  new
+  norm o0000000000000000000000000000000000000000000000000000
+  func EditScript()
+    silent! scr! Xsedfile
+  endfunc
+  s/\%')/\=EditScript()
+
+  delfunc EditScript
+  bwipe!
+endfunc
+
+" This was editing another file from the expression.
+func Test_sub_expr_goto_other_file()
+  call writefile([''], 'Xfileone', 'D')
+  enew!
+  call setline(1, ['a', 'b', 'c', 'd',
+	\ 'Xfileone zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz'])
+
+  func g:SplitGotoFile()
+    exe "sil! norm 0\<C-W>gf"
+    return ''
+  endfunc
+
+  $
+  s/\%')/\=g:SplitGotoFile()
+
+  delfunc g:SplitGotoFile
+  bwipe!
+endfunc
+
+func Test_recursive_expr_substitute()
+  " this was reading invalid memory
+  let lines =<< trim END
+      func Repl(g, n)
+        s
+        r%:s000
+      endfunc
+      next 0
+      let caught = 0
+      s/\%')/\=Repl(0, 0)
+      qall!
+  END
+  call writefile(lines, 'XexprSubst', 'D')
+  call RunVim([], [], '--clean -S XexprSubst')
+endfunc
+
+" Test for the 2-letter and 3-letter :substitute commands
+func Test_substitute_short_cmd()
+  new
+  call setline(1, ['one', 'one one one'])
+  s/one/two
+  call cursor(2, 1)
+
+  " :sc
+  call feedkeys(":sc\<CR>y", 'xt')
+  call assert_equal('two one one', getline(2))
+
+  " :scg
+  call setline(2, 'one one one')
+  call feedkeys(":scg\<CR>nyq", 'xt')
+  call assert_equal('one two one', getline(2))
+
+  " :sci
+  call setline(2, 'ONE One onE')
+  call feedkeys(":sci\<CR>y", 'xt')
+  call assert_equal('two One onE', getline(2))
+
+  " :scI
+  set ignorecase
+  call setline(2, 'ONE One one')
+  call feedkeys(":scI\<CR>y", 'xt')
+  call assert_equal('ONE One two', getline(2))
+  set ignorecase&
+
+  " :scn
+  call setline(2, 'one one one')
+  let t = execute('scn')->split("\n")
+  call assert_equal(['1 match on 1 line'], t)
+  call assert_equal('one one one', getline(2))
+
+  " :scp
+  call setline(2, "\tone one one")
+  redir => output
+  call feedkeys(":scp\<CR>y", 'xt')
+  redir END
+  call assert_equal('        two one one', output->split("\n")[-1])
+  call assert_equal("\ttwo one one", getline(2))
+
+  " :scl
+  call setline(2, "\tone one one")
+  redir => output
+  call feedkeys(":scl\<CR>y", 'xt')
+  redir END
+  call assert_equal("^Itwo one one$", output->split("\n")[-1])
+  call assert_equal("\ttwo one one", getline(2))
+
+  " :sgc
+  call setline(2, 'one one one one one')
+  call feedkeys(":sgc\<CR>nyyq", 'xt')
+  call assert_equal('one two two one one', getline(2))
+
+  " :sg
+  call setline(2, 'one one one')
+  sg
+  call assert_equal('two two two', getline(2))
+
+  " :sgi
+  call setline(2, 'ONE One onE')
+  sgi
+  call assert_equal('two two two', getline(2))
+
+  " :sgI
+  set ignorecase
+  call setline(2, 'ONE One one')
+  sgI
+  call assert_equal('ONE One two', getline(2))
+  set ignorecase&
+
+  " :sgn
+  call setline(2, 'one one one')
+  let t = execute('sgn')->split("\n")
+  call assert_equal(['3 matches on 1 line'], t)
+  call assert_equal('one one one', getline(2))
+
+  " :sgp
+  call setline(2, "\tone one one")
+  redir => output
+  sgp
+  redir END
+  call assert_equal('        two two two', output->split("\n")[-1])
+  call assert_equal("\ttwo two two", getline(2))
+
+  " :sgl
+  call setline(2, "\tone one one")
+  redir => output
+  sgl
+  redir END
+  call assert_equal("^Itwo two two$", output->split("\n")[-1])
+  call assert_equal("\ttwo two two", getline(2))
+
+  " :sgr
+  call setline(2, "one one one")
+  call cursor(2, 1)
+  s/abc/xyz/e
+  let @/ = 'one'
+  sgr
+  call assert_equal('xyz xyz xyz', getline(2))
+
+  " :sic
+  call cursor(1, 1)
+  s/one/two/e
+  call setline(2, "ONE One one")
+  call cursor(2, 1)
+  call feedkeys(":sic\<CR>y", 'xt')
+  call assert_equal('two One one', getline(2))
+
+  " :si
+  call setline(2, "ONE One one")
+  si
+  call assert_equal('two One one', getline(2))
+
+  " :siI
+  call setline(2, "ONE One one")
+  siI
+  call assert_equal('ONE One two', getline(2))
+
+  " :sin
+  call setline(2, 'ONE One onE')
+  let t = execute('sin')->split("\n")
+  call assert_equal(['1 match on 1 line'], t)
+  call assert_equal('ONE One onE', getline(2))
+
+  " :sip
+  call setline(2, "\tONE One onE")
+  redir => output
+  sip
+  redir END
+  call assert_equal('        two One onE', output->split("\n")[-1])
+  call assert_equal("\ttwo One onE", getline(2))
+
+  " :sir
+  call setline(2, "ONE One onE")
+  call cursor(2, 1)
+  s/abc/xyz/e
+  let @/ = 'one'
+  sir
+  call assert_equal('xyz One onE', getline(2))
+
+  " :sIc
+  call cursor(1, 1)
+  s/one/two/e
+  call setline(2, "ONE One one")
+  call cursor(2, 1)
+  call feedkeys(":sIc\<CR>y", 'xt')
+  call assert_equal('ONE One two', getline(2))
+
+  " :sIg
+  call setline(2, "ONE one onE one")
+  sIg
+  call assert_equal('ONE two onE two', getline(2))
+
+  " :sIi
+  call setline(2, "ONE One one")
+  sIi
+  call assert_equal('two One one', getline(2))
+
+  " :sI
+  call setline(2, "ONE One one")
+  sI
+  call assert_equal('ONE One two', getline(2))
+
+  " :sIn
+  call setline(2, 'ONE One one')
+  let t = execute('sIn')->split("\n")
+  call assert_equal(['1 match on 1 line'], t)
+  call assert_equal('ONE One one', getline(2))
+
+  " :sIp
+  call setline(2, "\tONE One one")
+  redir => output
+  sIp
+  redir END
+  call assert_equal('        ONE One two', output->split("\n")[-1])
+  call assert_equal("\tONE One two", getline(2))
+
+  " :sIl
+  call setline(2, "\tONE onE one")
+  redir => output
+  sIl
+  redir END
+  call assert_equal("^IONE onE two$", output->split("\n")[-1])
+  call assert_equal("\tONE onE two", getline(2))
+
+  " :sIr
+  call setline(2, "ONE one onE")
+  call cursor(2, 1)
+  s/abc/xyz/e
+  let @/ = 'one'
+  sIr
+  call assert_equal('ONE xyz onE', getline(2))
+
+  " :src
+  call setline(2, "ONE one one")
+  call cursor(2, 1)
+  s/abc/xyz/e
+  let @/ = 'one'
+  call feedkeys(":src\<CR>y", 'xt')
+  call assert_equal('ONE xyz one', getline(2))
+
+  " :srg
+  call setline(2, "one one one")
+  call cursor(2, 1)
+  s/abc/xyz/e
+  let @/ = 'one'
+  srg
+  call assert_equal('xyz xyz xyz', getline(2))
+
+  " :sri
+  call setline(2, "ONE one onE")
+  call cursor(2, 1)
+  s/abc/xyz/e
+  let @/ = 'one'
+  sri
+  call assert_equal('xyz one onE', getline(2))
+
+  " :srI
+  call setline(2, "ONE one onE")
+  call cursor(2, 1)
+  s/abc/xyz/e
+  let @/ = 'one'
+  srI
+  call assert_equal('ONE xyz onE', getline(2))
+
+  " :srn
+  call setline(2, "ONE one onE")
+  call cursor(2, 1)
+  s/abc/xyz/e
+  let @/ = 'one'
+  let t = execute('srn')->split("\n")
+  call assert_equal(['1 match on 1 line'], t)
+  call assert_equal('ONE one onE', getline(2))
+
+  " :srp
+  call setline(2, "\tONE one onE")
+  call cursor(2, 1)
+  s/abc/xyz/e
+  let @/ = 'one'
+  redir => output
+  srp
+  redir END
+  call assert_equal('        ONE xyz onE', output->split("\n")[-1])
+  call assert_equal("\tONE xyz onE", getline(2))
+
+  " :srl
+  call setline(2, "\tONE one onE")
+  call cursor(2, 1)
+  s/abc/xyz/e
+  let @/ = 'one'
+  redir => output
+  srl
+  redir END
+  call assert_equal("^IONE xyz onE$", output->split("\n")[-1])
+  call assert_equal("\tONE xyz onE", getline(2))
+
+  " :sr
+  call setline(2, "ONE one onE")
+  call cursor(2, 1)
+  s/abc/xyz/e
+  let @/ = 'one'
+  sr
+  call assert_equal('ONE xyz onE', getline(2))
+
+  " :sce
+  s/abc/xyz/e
+  call assert_fails("sc", 'E486:')
+  sce
+  " :sge
+  call assert_fails("sg", 'E486:')
+  sge
+  " :sie
+  call assert_fails("si", 'E486:')
+  sie
+  " :sIe
+  call assert_fails("sI", 'E486:')
+  sIe
+
+  bw!
+endfunc
+
+" Check handling expanding "~" resulting in extremely long text.
+" FIXME: disabled, it takes too long to run on CI
+"func Test_substitute_tilde_too_long()
+"  enew!
+"
+"  s/.*/ixxx
+"  s//~~~~~~~~~AAAAAAA@(
+"
+"  " Either fails with "out of memory" or "text too long".
+"  " This can take a long time.
+"  call assert_fails('sil! norm &&&&&&&&&', ['E1240:\|E342:'])
+"
+"  bwipe!
+"endfunc
+
+" This should be done last to reveal a memory leak when vim_regsub_both() is
+" called to evaluate an expression but it is not used in a second call.
+func Test_z_substitute_expr_leak()
+  func SubExpr()
+    ~n
+  endfunc
+  silent! s/\%')/\=SubExpr()
+  delfunc SubExpr
+endfunc
+
+func Test_substitute_expr_switch_win()
+  func R()
+    wincmd x
+    return 'XXXX'
+  endfunc
+  new Xfoobar
+  let bufnr = bufnr('%')
+  put ='abcdef'
+  silent! s/\%')/\=R()
+  call assert_fails(':%s/./\=R()/g', 'E565:')
+  delfunc R
+  exe bufnr .. "bw!"
+endfunc
+
+" recursive call of :s using test-replace special
+func Test_substitute_expr_recursive()
+  func Q()
+    %s/./\='foobar'/gn
+    return "foobar"
+  endfunc
+  func R()
+    %s/./\=Q()/g
+  endfunc
+  new Xfoobar_UAF
+  let bufnr = bufnr('%')
+  put ='abcdef'
+  silent! s/./\=R()/g
+  call assert_fails(':%s/./\=R()/g', 'E565:')
+  delfunc R
+  delfunc Q
+  exe bufnr .. "bw!"
+endfunc
+
+" Test for changing 'cpo' in a substitute expression
+func Test_substitute_expr_cpo()
+  func XSubExpr()
+    set cpo=
+    return 'x'
+  endfunc
+
+  let save_cpo = &cpo
+  call assert_equal('xxx', substitute('abc', '.', '\=XSubExpr()', 'g'))
+  call assert_equal(save_cpo, &cpo)
+
+  delfunc XSubExpr
+endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

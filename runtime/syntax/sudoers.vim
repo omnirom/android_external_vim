@@ -1,9 +1,11 @@
 " Vim syntax file
 " Language:             sudoers(5) configuration files
+" Maintainer:           Eisuke Kawashima ( e.kawaschima+vim AT gmail.com )
 " Previous Maintainer:  Nikolai Weibull <now@bitwi.se>
-" Latest Revision:      2018-08-18
+" Latest Revision:      2024 Sep 02
 " Recent Changes:	Support for #include and #includedir.
 " 			Added many new options (Samuel D. Leslie)
+" 			Update allowed Tag_Spec Runas_Spec syntax items
 
 if exists("b:current_syntax")
   finish
@@ -21,12 +23,12 @@ syn match   sudoersUserSpec '^' nextgroup=@sudoersUserInSpec skipwhite
 
 syn match   sudoersSpecEquals         contained '=' nextgroup=@sudoersCmndSpecList skipwhite
 
-syn cluster sudoersCmndSpecList       contains=sudoersUserRunasBegin,sudoersPASSWD,@sudoersCmndInSpec
+syn cluster sudoersCmndSpecList       contains=sudoersUserRunasBegin,sudoersTagSpec,@sudoersCmndInSpec
 
 syn keyword sudoersTodo               contained TODO FIXME XXX NOTE
 
 syn region  sudoersComment            display oneline start='#' end='$' contains=sudoersTodo
-syn region  sudoersInclude            display oneline start='#\(include\|includedir\)' end='$'
+syn region  sudoersInclude            display oneline start='[#@]\%(include\|includedir\)\>' end='$'
 
 syn keyword sudoersAlias              User_Alias Runas_Alias nextgroup=sudoersUserAlias skipwhite skipnl
 syn keyword sudoersAlias              Host_Alias nextgroup=sudoersHostAlias skipwhite skipnl
@@ -91,10 +93,11 @@ syn cluster sudoersUserList         contains=sudoersUserListComma,sudoersUserLis
 syn match   sudoersUserSpecComma    contained ',' nextgroup=@sudoersUserInSpec  skipwhite skipnl
 syn cluster sudoersUserSpec         contains=sudoersUserSpecComma,@sudoersHostInSpec
 
-syn match   sudoersUserRunasBegin   contained '(' nextgroup=@sudoersUserInRunas skipwhite skipnl
+syn match   sudoersUserRunasBegin   contained '(' nextgroup=@sudoersUserInRunas,sudoersUserRunasColon skipwhite skipnl
 syn match   sudoersUserRunasComma   contained ',' nextgroup=@sudoersUserInRunas skipwhite skipnl
-syn match   sudoersUserRunasEnd     contained ')' nextgroup=sudoersPASSWD,@sudoersCmndInSpec skipwhite skipnl
-syn cluster sudoersUserRunas        contains=sudoersUserRunasComma,@sudoersUserInRunas,sudoersUserRunasEnd
+syn match   sudoersUserRunasColon   contained ':' nextgroup=@sudoersUserInRunas skipwhite skipnl
+syn match   sudoersUserRunasEnd     contained ')' nextgroup=sudoersTagSpec,@sudoersCmndInSpec skipwhite skipnl
+syn cluster sudoersUserRunas        contains=sudoersUserRunasComma,sudoersUserRunasColon,@sudoersUserInRunas,sudoersUserRunasEnd
 
 
 syn match   sudoersHostAliasEquals  contained '=' nextgroup=@sudoersHostInList  skipwhite skipnl
@@ -201,7 +204,7 @@ syn keyword sudoersBooleanParameter contained skipwhite skipnl
                                   \ shell_noargs
                                   \ stay_setuid
                                   \ sudoedit_checkdir
-                                  \ sudoedit_fellow
+                                  \ sudoedit_follow
                                   \ syslog_pid
                                   \ targetpw
                                   \ tty_tickets
@@ -290,7 +293,7 @@ syn region  sudoersStringValue  contained start=+"+ skip=+\\"+ end=+"+ nextgroup
 syn match   sudoersListValue    contained '[^[:space:],:=\\]*\%(\\[[:space:],:=\\][^[:space:],:=\\]*\)*' nextgroup=sudoersParameterListComma skipwhite skipnl
 syn region  sudoersListValue    contained start=+"+ skip=+\\"+ end=+"+ nextgroup=sudoersParameterListComma skipwhite skipnl
 
-syn match   sudoersPASSWD                   contained '\%(NO\)\=PASSWD:' nextgroup=@sudoersCmndInSpec skipwhite
+syn match   sudoersTagSpec      contained '\%(NO\)\=\%(EXEC\|FOLLOW\|LOG_\%(INPUT\|OUTPUT\)\|MAIL\|INTERCEPT\|PASSWD\|SETENV\):' nextgroup=sudoersTagSpec,@sudoersCmndInSpec skipwhite
 
 hi def link sudoersSpecEquals               Operator
 hi def link sudoersTodo                     Todo
@@ -344,6 +347,7 @@ hi def link sudoersUserListColon            Delimiter
 hi def link sudoersUserSpecComma            Delimiter
 hi def link sudoersUserRunasBegin           Delimiter
 hi def link sudoersUserRunasComma           Delimiter
+hi def link sudoersUserRunasColon           Delimiter
 hi def link sudoersUserRunasEnd             Delimiter
 hi def link sudoersHostAliasEquals          Operator
 hi def link sudoersHostListComma            Delimiter
@@ -380,7 +384,7 @@ hi def link sudoersListParameterEquals      Operator
 hi def link sudoersIntegerValue             Number
 hi def link sudoersStringValue              String
 hi def link sudoersListValue                String
-hi def link sudoersPASSWD                   Special
+hi def link sudoersTagSpec                  Special
 hi def link sudoersInclude                  Statement
 
 let b:current_syntax = "sudoers"

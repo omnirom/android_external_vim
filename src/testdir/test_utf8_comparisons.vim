@@ -86,6 +86,46 @@ endfunc
 " test that g~ap changes one paragraph only.
 func Test_gap()
   new
-  call feedkeys("iabcd\n\ndefggg0g~ap", "tx")
+  " setup text
+  call feedkeys("iabcd\<cr>\<cr>defg", "tx")
+  " modify only first line
+  call feedkeys("gg0g~ap", "tx")
   call assert_equal(["ABCD", "", "defg"], getline(1,3))
 endfunc
+
+" test that g~, ~ and gU correctly upper-cases ß
+func Test_uppercase_sharp_ss()
+  new
+  call setline(1, repeat(['ß'], 4))
+
+  call cursor(1, 1)
+  norm! ~
+  call assert_equal('ẞ', getline(line('.')))
+  norm! ~
+  call assert_equal('ß', getline(line('.')))
+
+  call cursor(2, 1)
+  norm! g~l
+  call assert_equal('ẞ', getline(line('.')))
+  norm! g~l
+  call assert_equal('ß', getline(line('.')))
+
+  call cursor(3, 1)
+  norm! gUl
+  call assert_equal('ẞ', getline(line('.')))
+  norm! vgU
+  call assert_equal('ẞ', getline(line('.')))
+  norm! vgu
+  call assert_equal('ß', getline(line('.')))
+  norm! gul
+  call assert_equal('ß', getline(line('.')))
+
+  call cursor(4, 1)
+  norm! vgU
+  call assert_equal('ẞ', getline(line('.')))
+  norm! vgu
+  call assert_equal('ß', getline(line('.')))
+  bw!
+endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

@@ -1,9 +1,11 @@
 " Vim syntax file
 " Language:	Maple V (based on release 4)
-" Maintainer:	Charles E. Campbell <NdrOchipS@PcampbellAfamily.Mbiz>
+" Maintainer:	This runtime file is looking for a new maintainer.
+" Former Maintainer:Charles E. Campbell
 " Last Change:	Mar 26, 2019
-" Version:	16
-" URL:	http://www.drchip.org/astronaut/vim/index.html#SYNTAX_MAPLE
+"   2024 Feb 19 by Vim Project (announce adoption)
+" Version:	17
+" Former URL:	http://www.drchip.org/astronaut/vim/index.html#SYNTAX_MAPLE
 "
 " Package Function Selection: {{{1
 " Because there are a lot of packages, and because of the potential for namespace

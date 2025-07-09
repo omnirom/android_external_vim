@@ -10,7 +10,7 @@ func Test_rename_file_to_file()
 
   " When the destination file already exists, it should be overwritten.
   call writefile(['foo'], 'Xrename1')
-  call writefile(['bar'], 'Xrename2')
+  call writefile(['bar'], 'Xrename2', 'D')
 
   call assert_equal(0, rename('Xrename1', 'Xrename2'))
   call assert_equal('', glob('Xrename1'))
@@ -25,7 +25,7 @@ func Test_rename_file_ignore_case()
   set fileignorecase
   call writefile(['foo'], 'Xrename')
 
-  call assert_equal(0, rename('Xrename', 'XRENAME'))
+  call assert_equal(0, 'Xrename'->rename('XRENAME'))
 
   call assert_equal(['foo'], readfile('XRENAME'))
 
@@ -34,7 +34,7 @@ func Test_rename_file_ignore_case()
 endfunc
 
 func Test_rename_same_file()
-  call writefile(['foo'], 'Xrename')
+  call writefile(['foo'], 'Xrename', 'D')
 
   " When the source and destination are the same file, nothing
   " should be done. The source file should not be deleted.
@@ -43,8 +43,6 @@ func Test_rename_same_file()
 
   call assert_equal(0, rename('./Xrename', 'Xrename'))
   call assert_equal(['foo'], readfile('Xrename'))
-
-  call delete('Xrename')
 endfunc
 
 func Test_rename_dir_to_dir()
@@ -61,27 +59,24 @@ func Test_rename_dir_to_dir()
 endfunc
 
 func Test_rename_same_dir()
-  call mkdir('Xrenamedir')
+  call mkdir('Xrenamedir', 'R')
   call writefile(['foo'], 'Xrenamedir/Xrenamefile')
 
   call assert_equal(0, rename('Xrenamedir', 'Xrenamedir'))
 
   call assert_equal(['foo'], readfile('Xrenamedir/Xrenamefile'))
-
-  call delete('Xrenamedir/Xrenamefile')
-  call delete('Xrenamedir', 'd')
 endfunc
 
 func Test_rename_copy()
   " Check that when original file can't be deleted, rename()
   " still succeeds but copies the file.
-  call mkdir('Xrenamedir')
+  call mkdir('Xrenamedir', 'R')
   call writefile(['foo'], 'Xrenamedir/Xrenamefile')
   call setfperm('Xrenamedir', 'r-xr-xr-x')
 
   call assert_equal(0, rename('Xrenamedir/Xrenamefile', 'Xrenamefile'))
 
-  if !has('win32')
+  if !has('win32') && !IsRoot()
     " On Windows, the source file is removed despite
     " its directory being made not writable.
     call assert_equal(['foo'], readfile('Xrenamedir/Xrenamefile'))
@@ -89,13 +84,11 @@ func Test_rename_copy()
   call assert_equal(['foo'], readfile('Xrenamefile'))
 
   call setfperm('Xrenamedir', 'rwxrwxrwx')
-  call delete('Xrenamedir/Xrenamefile')
-  call delete('Xrenamedir', 'd')
   call delete('Xrenamefile')
 endfunc
 
 func Test_rename_fails()
-  call writefile(['foo'], 'Xrenamefile')
+  call writefile(['foo'], 'Xrenamefile', 'D')
 
   " Can't rename into a non-existing directory.
   call assert_notequal(0, rename('Xrenamefile', 'Xdoesnotexist/Xrenamefile'))
@@ -111,8 +104,8 @@ func Test_rename_fails()
   " Can't rename to en empty file name.
   call assert_notequal(0, rename('Xrenamefile', ''))
 
-  call assert_fails('call rename("Xrenamefile", [])', 'E730')
-  call assert_fails('call rename(0z, "Xrenamefile")', 'E976')
-
-  call delete('Xrenamefile')
+  call assert_fails('call rename("Xrenamefile", [])', 'E730:')
+  call assert_fails('call rename(0z, "Xrenamefile")', 'E976:')
 endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

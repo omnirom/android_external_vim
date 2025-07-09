@@ -1,12 +1,11 @@
 " Tests for memory usage.
 
-if !has('terminal') || has('gui_running') || $ASAN_OPTIONS !=# ''
-  " Skip tests on Travis CI ASAN build because it's difficult to estimate
-  " memory usage.
-  finish
-endif
+CheckFeature terminal
+CheckNotGui
 
-source shared.vim
+" Skip tests on Travis CI ASAN build because it's difficult to estimate memory
+" usage.
+CheckNotAsan
 
 func s:pick_nr(str) abort
   return substitute(a:str, '[^0-9]', '', 'g') * 1
@@ -14,7 +13,7 @@ endfunc
 
 if has('win32')
   if !executable('wmic')
-    finish
+    throw 'Skipped: wmic program missing'
   endif
   func s:memory_usage(pid) abort
     let cmd = printf('wmic process where processid=%d get WorkingSetSize', a:pid)
@@ -22,13 +21,13 @@ if has('win32')
   endfunc
 elseif has('unix')
   if !executable('ps')
-    finish
+    throw 'Skipped: ps program missing'
   endif
   func s:memory_usage(pid) abort
     return s:pick_nr(system('ps -o rss= -p ' . a:pid))
   endfunc
 else
-  finish
+  throw 'Skipped: not win32 or unix'
 endif
 
 " Wait for memory usage to level off.
@@ -63,6 +62,9 @@ func s:term_vim.start(...) abort
   let self.job = term_getjob(self.buf)
   call WaitFor({-> job_status(self.job) ==# 'run'})
   let self.pid = job_info(self.job).process
+
+  " running an external command may fail once in a while
+  let g:test_is_flaky = 1
 endfunc
 
 func s:term_vim.stop() abort
@@ -79,14 +81,15 @@ func Test_memory_func_capture_vargs()
   " Case: if a local variable captures a:000, funccall object will be free
   " just after it finishes.
   let testfile = 'Xtest.vim'
-  call writefile([
-        \ 'func s:f(...)',
-        \ '  let x = a:000',
-        \ 'endfunc',
-        \ 'for _ in range(10000)',
-        \ '  call s:f(0)',
-        \ 'endfor',
-        \ ], testfile)
+  let lines =<< trim END
+        func s:f(...)
+          let x = a:000
+        endfunc
+        for _ in range(10000)
+          call s:f(0)
+        endfor
+  END
+  call writefile(lines, testfile, 'D')
 
   let vim = s:vim_new()
   call vim.start('--clean', '-c', 'set noswapfile', testfile)
@@ -108,7 +111,6 @@ func Test_memory_func_capture_vargs()
   call assert_inrange(lower, upper, after.max)
 
   call vim.stop()
-  call delete(testfile)
 endfunc
 
 func Test_memory_func_capture_lvars()
@@ -116,14 +118,15 @@ func Test_memory_func_capture_lvars()
   " free until garbage collector runs, but after that memory usage doesn't
   " increase so much even when rerun Xtest.vim since system memory caches.
   let testfile = 'Xtest.vim'
-  call writefile([
-        \ 'func s:f()',
-        \ '  let x = l:',
-        \ 'endfunc',
-        \ 'for _ in range(10000)',
-        \ '  call s:f()',
-        \ 'endfor',
-        \ ], testfile)
+  let lines =<< trim END
+        func s:f()
+          let x = l:
+        endfunc
+        for _ in range(10000)
+          call s:f()
+        endfor
+  END
+  call writefile(lines, testfile, 'D')
 
   let vim = s:vim_new()
   call vim.start('--clean', '-c', 'set noswapfile', testfile)
@@ -142,11 +145,18 @@ func Test_memory_func_capture_lvars()
 
   " The usage may be a bit less than the last value, use 80%.
   " Allow for 20% tolerance at the upper limit.  That's very permissive, but
-  " otherwise the test fails sometimes.
+  " otherwise the test fails sometimes.  On Cirrus CI with FreeBSD we need to
+  " be even much more permissive.
+  if has('bsd')
+    let multiplier = 19
+  else
+    let multiplier = 12
+  endif
   let lower = before * 8 / 10
-  let upper = (after.max + (after.last - before)) * 12 / 10
+  let upper = (after.max + (after.last - before)) * multiplier / 10
   call assert_inrange(lower, upper, last)
 
   call vim.stop()
-  call delete(testfile)
 endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

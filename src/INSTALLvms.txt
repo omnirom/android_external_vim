@@ -1,7 +1,7 @@
 INSTALLvms.txt - Installation of Vim on OpenVMS
 
-Maintainer:   Zoltan Arpadffy <arpadffy@polarhome.com>
-Last change:  2008 Jan 06
+Maintainer:   Zoltan Arpadffy <zoltan.arpadffy@gmail.com>
+Last change:  2023 Nov 29
 
 This file contains instructions for compiling Vim on Openvms.
 If you already have an executable version of Vim, you don't need this.
@@ -9,12 +9,12 @@ If you already have an executable version of Vim, you don't need this.
 If you skip settings described here, then you will get the default Vim
 behavior as it is documented, which should be fine for most users.
 
-The file "feature.h" can be edited to match your preferences, but this files
+The file "feature.h" can be edited to match your preferences, but this file
 does not describe possibilities hidden in feature.h acrobatics, however
-parameters from MAKE_VMS.MMS actively uses and sets up parameters in relation
+parameters from MAKE_VMS.MMS actively use and set up parameters in relation
 with feature.h
 
-More information and case analysis you can found in os_vms.txt
+More information and case analysis you can find in os_vms.txt
 ([runtime.doc]os_vms.txt or :help vms from vim prompt)
 
 Contents:
@@ -39,6 +39,9 @@ Contents:
      extra/vim-X.X-extra.tar.gz
 
      where X.X is the version number.
+
+You may want to clone the latest source code from https://github/vim/vim
+Or the last tested on OpenVMS from http://polarhome.com/vim/files/source/vms/
 
 1.2. Expand the three archives.
 
@@ -77,15 +80,12 @@ from CVS mirror ftp://ftp.polarhome.com/pub/cvs/SOURCE/
 
 	Parameter name	: MODEL
 	Description	: Build model selection
-	Options:	: TINY	  - Almost no features enabled, not even
-			  multiple windows
-			  SMALL   - Few features enabled, as basic as possible
+	Options:	: TINY	  - No optional features enabled
 			  NORMAL  - A default selection of features enabled
-			  BIG	  - Many features enabled, as rich as possible.
-			  (OpenVMS default)
+				    (OpenVMS default)
 			  HUGE	  - All possible features enabled.
-			  Uncommented - will default to BIG
-	Default		: MODEL = BIG
+			  Uncommented - will default to HUGE
+	Default		: MODEL = NORMAL
 
 	Parameter name	: GUI
 	Description	: GUI or terminal mode executable
@@ -120,7 +120,7 @@ from CVS mirror ftp://ftp.polarhome.com/pub/cvs/SOURCE/
 	Default		: CCVER = YES
 
 	Parameter name	: DEBUG
-	Description	: Building a debug version
+	Description	: Building a debug version (DVIM.EXE)
 	Options:	: YES - debug version will be built
 			  Uncommented - building normal executable
 	Default		: Uncommented
@@ -145,7 +145,7 @@ from CVS mirror ftp://ftp.polarhome.com/pub/cvs/SOURCE/
 
 	Parameter name	: VIM_XIM
 	Description	: X Input Method. For entering special languages
-			  like chinese and Japanese. Please define just
+			  like Chinese and Japanese. Please define just
 			  one: VIM_XIM or VIM_HANGULIN
 	Options:	: YES - Build with support
 			  Uncommented - build without support.
@@ -164,6 +164,36 @@ from CVS mirror ftp://ftp.polarhome.com/pub/cvs/SOURCE/
 			  When not defined, only a TAB is allowed.
 	Options:	: YES - Build with support
 			  Uncommented - build without support.
+	Default		: Uncommented
+
+	Parameter name	: VIM_RUBY
+	Description	: Add Ruby support
+	Options:	: YES - Build with support
+			  Uncommented - build without support.
+	Default		: Uncommented
+
+	Parameter name	: VIM_LUA
+	Description	: Add Lua support
+	Options:	: YES - Build with support
+			  Uncommented - build without support.
+	Default		: Uncommented     
+
+	Parameter name	: VIM_MZSCHEME
+	Description	: Add support for FEATURE_MZSCHEM
+	Options:	: YES - Build with support
+			  Uncommented - build without FEATURE_MZSCHEM.
+	Default		: Uncommented
+
+	Parameter name	: VIM_ICONV
+	Description	: Build with using the ICONV library 
+	Options:	: YES - Build with support
+			  Uncommented - build without support.
+	Default		: Uncommented     
+
+	Parameter name	: MODIFIED_BY
+	Description	: Add note if you modified the code
+	Options:	: YES - Build with adding the MODIFIED_BY define
+			  Uncommented - build without the define
 	Default		: Uncommented
 
      You can edit the *_INC and *_LIB qualifiers, but it is really
@@ -187,6 +217,11 @@ from CVS mirror ftp://ftp.polarhome.com/pub/cvs/SOURCE/
 
 	mms /descrip=Make_vms.mms clean
 
+     The build will stop if any error or warning is encontered. In some cases
+     the warnings can be ignored. Use:
+
+     mms /descrip=Make_vms.mms /ignore=warning
+
 4. Compilation VAXC
 
 4.1. VAXC compiler is not fully ANSI C compatible in pre-processor directives
@@ -198,7 +233,7 @@ from CVS mirror ftp://ftp.polarhome.com/pub/cvs/SOURCE/
      more information can be found in os_vms_fix.com file itself.
 
      NOTE: even if os_vms_fix.com will fix all pre-processor directives it will
-     leave singe (long) line directives. You have to fix them manually.
+     leave single (long) line directives. You have to fix them manually.
      Known problematic files are option.h and option.c
 
 4.2. After the conversion you can continue building as it has been described
@@ -210,7 +245,7 @@ from CVS mirror ftp://ftp.polarhome.com/pub/cvs/SOURCE/
      XXD.EXE you should change to subdirectory <.CTAGS> or <.XXD> and build
      them separately.
 
-5.2. In these directories you can found one make file for VMS as well.
+5.2. In these directories you can find one make file for VMS as well.
      Please read the detailed build instructions in the related *.MMS file.
 
 6.   Deployment
@@ -240,7 +275,7 @@ from CVS mirror ftp://ftp.polarhome.com/pub/cvs/SOURCE/
 7.1  General notes
 
      To be able to build external GUI or language support you have to enable
-     related feature in MAKE_VMS.MMS file. Usually it need some extra tuning
+     related feature in MAKE_VMS.MMS file. Usually it needs some extra tuning
      around include files, shared libraries etc.
 
      Please note, that leading "," are valuable for MMS/MMK syntax.
@@ -300,7 +335,7 @@ perl_env :
      So far it works just on Alpha and IA64. More information at:
      http://www.openvms.compaq.com/openvms/products/ips/gtk.html
 
-     You need also the OpenVMS Porting Library:
+     You also need the OpenVMS Porting Library:
      http://www.openvms.compaq.com/openvms/products/ips/porting.html
 
      Source code for GTK and porting library that is used to build
@@ -319,7 +354,7 @@ perl_env :
 
      Build it as normally.
 
-     Used sharable images are:
+     Used shareable images are:
 	gtk_root:[glib]libglib.exe /share,-
 	gtk_root:[glib.gmodule]libgmodule.exe /share,-
 	gtk_root:[gtk.gdk]libgdk.exe /share,-
@@ -346,7 +381,7 @@ perl_env :
 
      Edit PERL_INC = to point to perl includes directory where is extern.h
 
-     Build as usually.
+     Build as usual.
 
 7.4  PYTHON
 
@@ -358,7 +393,7 @@ perl_env :
      python.h is located.
      Enable Python feature at make_vms.mms with VIM_PYTHON = YES
 
-     Build as usually.
+     Build as usual.
 
 7.5  TCL
 
@@ -371,13 +406,13 @@ perl_env :
 
      Edit TCL_INC = to point to TCL includes directory where is tcl.h
 
-     Build as usually.
+     Build as usual.
 
 8.   Notes
 
 8.1. New Compaq C compiler
 
-     If you are using Compaq C compiler V6.2 or newer, Informational messages
+     If you are using Compaq C compiler V6.2 or newer, informational messages
      of the type QUESTCOMPARE will be displayed. You should ignore those
      messages ; they are generated only because some test comparisons are done
      with variables which type vary depending on the OS. Under VMS, those are

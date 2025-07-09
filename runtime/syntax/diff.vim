@@ -1,8 +1,9 @@
 " Vim syntax file
 " Language:	Diff (context or unified)
-" Maintainer:	Bram Moolenaar <Bram@vim.org>
-"               Translations by Jakson Alves de Aquino.
-" Last Change:	2016 Apr 02
+" Maintainer:	The Vim Project <https://github.com/vim/vim>
+"		Translations by Jakson Alves de Aquino.
+" Last Change:	2025 Jun 26
+" Former Maintainer:	Bram Moolenaar <Bram@vim.org>
 
 " Quit when a (custom) syntax file was already loaded
 if exists("b:current_syntax")
@@ -15,7 +16,7 @@ syn match diffIdentical	"^Files .* and .* are identical$"
 syn match diffDiffer	"^Files .* and .* differ$"
 syn match diffBDiffer	"^Binary files .* and .* differ$"
 syn match diffIsA	"^File .* is a .* while file .* is a .*"
-syn match diffNoEOL	"^\\ No newline at end of file .*"
+syn match diffNoEOL	"^\\ No newline at end of file.*"
 syn match diffCommon	"^Common subdirectories: .*"
 
 " Disable the translations by setting diff_translations to zero.
@@ -346,11 +347,18 @@ syn match diffLine	"^---$"
 syn match diffLine	"^\d\+\(,\d\+\)\=[cda]\d\+\>.*"
 
 syn match diffFile	"^diff\>.*"
-syn match diffFile	"^+++ .*"
 syn match diffFile	"^Index: .*"
 syn match diffFile	"^==== .*"
-syn match diffOldFile	"^\*\*\* .*"
-syn match diffNewFile	"^--- .*"
+
+if search('^@@ -\S\+ +\S\+ @@', 'nw', '', 100)
+  " unified
+  syn match diffOldFile	"^--- .*"
+  syn match diffNewFile	"^+++ .*"
+else
+  " context / old style
+  syn match diffOldFile	"^\*\*\* .*"
+  syn match diffNewFile	"^--- .*"
+endif
 
 " Used by git
 syn match diffIndexLine	"^index \x\x\x\x.*"
@@ -370,9 +378,9 @@ hi def link diffBDiffer		Constant
 hi def link diffIsA		Constant
 hi def link diffNoEOL		Constant
 hi def link diffCommon		Constant
-hi def link diffRemoved		Special
-hi def link diffChanged		PreProc
-hi def link diffAdded		Identifier
+hi def link diffRemoved		Removed
+hi def link diffChanged		Changed
+hi def link diffAdded		Added
 hi def link diffLine		Statement
 hi def link diffSubname		PreProc
 hi def link diffComment		Comment

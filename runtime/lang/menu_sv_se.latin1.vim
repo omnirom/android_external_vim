@@ -1,6 +1,7 @@
 " Menu Translations:    Swedish
 " Maintainer:		Johan Svedberg <johan@svedberg.com>
-" Last Change:		2012 May 01
+" Last Change:		2020 Apr 22
+" Original translations
 
 " Quit when menu translations have already been done.
 if exists("did_menu_trans")
@@ -33,7 +34,7 @@ menutrans &About		&Om
 menutrans &File				&Arkiv
 menutrans &Open\.\.\.<Tab>:e		&Öppna\.\.\.<Tab>:e
 menutrans Sp&lit-Open\.\.\.<Tab>:sp	Öppna\ i\ splitt-vy\.\.\.<Tab>:sp
-menutrans Open\ Tab\.\.\.<Tab>:tabnew	Öppna\ flik\.\.\.<Tab>:tabnew
+menutrans Open\ &Tab\.\.\.<Tab>:tabnew	Öppna\ flik\.\.\.<Tab>:tabnew
 menutrans &New<Tab>:enew		&Ny<Tab>:enew
 menutrans &Close<Tab>:close		S&täng<Tab>:close
 menutrans &Save<Tab>:w			&Spara<Tab>:w
@@ -51,7 +52,7 @@ menutrans &Redo<Tab>^R			&Gör\ om<Tab>^R
 menutrans Rep&eat<Tab>\.		&Repetera<Tab>\.
 menutrans Cu&t<Tab>"+x			Klipp\ &ut<Tab>"+x
 menutrans &Copy<Tab>"+y			&Kopiera<Tab>"+y
-menutrans &Paste<Tab>"+gP		Klistra &in<Tab>"+gP
+menutrans &Paste<Tab>"+gP		Klistra\ &in<Tab>"+gP
 menutrans Put\ &Before<Tab>[p		Sätt\ in\ &före<Tab>[p
 menutrans Put\ &After<Tab>]p		Sätt\ in\ &efter<Tab>]p
 menutrans &Select\ All<Tab>ggVG		&Markera\ allt<Tab>ggVG

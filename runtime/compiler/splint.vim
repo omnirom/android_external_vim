@@ -2,7 +2,8 @@
 " Compiler:     splint/lclint (C source code checker)
 " Maintainer:   Ralf Wildenhues <Ralf.Wildenhues@gmx.de>
 " Splint Home:	http://www.splint.org/
-" Last Change:  2005 Apr 21
+" Last Change:  2019 Jul 23
+"		2024 Apr 03 by The Vim Project (removed :CompilerSet definition)
 " $Revision: 1.3 $
 
 if exists("current_compiler")
@@ -10,16 +11,12 @@ if exists("current_compiler")
 endif
 let current_compiler = "splint"
 
-if exists(":CompilerSet") != 2		" older Vim always used :setlocal
-  command -nargs=* CompilerSet setlocal <args>
-endif
-
 let s:cpo_save = &cpo
 set cpo-=C
 
 " adapt this if you want to check more than one file at a time.
 " put command line options in .splintrc or ~/.splintrc
-CompilerSet makeprg=splint\ %
+CompilerSet makeprg=splint\ %:S
 
 " Note: when using the new array bounds checking flags:  Each warning
 " usually has several lines and several references to source code mostly

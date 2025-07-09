@@ -2,6 +2,7 @@
 " Language:             ld(1) script
 " Previous Maintainer:  Nikolai Weibull <now@bitwi.se>
 " Latest Revision:      2006-04-19
+" Last Change:		2023 Apr 19
 
 if exists("b:current_syntax")
   finish
@@ -43,12 +44,12 @@ syn match   ldSpecial       '/DISCARD/'
 syn keyword ldIdentifier    ORIGIN LENGTH
 
 syn match   ldSpecSections  '\.'
-syn match   ldSections      '\.\S\+'
+syn match   ldSections      '\.[^ \t)]\+'
 syn match   ldSpecSections  '\.\%(text\|data\|bss\|symver\)\>'
 
 syn match   ldNumber        display '\<0[xX]\x\+\>'
 syn match   ldNumber        display '\d\+[KM]\>' contains=ldNumberMult
-syn match   ldNumberMult    display '[KM]\>'
+syn match   ldNumberMult    display '\(\d\+\)\@<=[KM]\>'
 syn match   ldOctal         contained display '\<0\o\+\>'
                             \ contains=ldOctalZero
 syn match   ldOctalZero     contained display '\<0'

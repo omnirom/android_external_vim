@@ -1,4 +1,7 @@
 " Tests for the exists() function
+
+import './util/vim9.vim' as v9
+
 func Test_exists()
   augroup myagroup
       autocmd! BufEnter       *.my     echo "myfile edited"
@@ -68,6 +71,10 @@ func Test_exists()
   " Existing environment variable
   let $EDITOR_NAME = 'Vim Editor'
   call assert_equal(1, exists('$EDITOR_NAME'))
+  if has('unix')
+    " ${name} environment variables are supported only on Unix-like systems
+    call assert_equal(1, exists('${VIM}'))
+  endif
   " Non-existing environment variable
   call assert_equal(0, exists('$NON_ENV_VAR'))
 
@@ -88,14 +95,30 @@ func Test_exists()
   " Function that may be created by script autoloading
   call assert_equal(0, exists('*footest#F'))
 
+  call assert_equal(has('float'), exists('*acos'))
+  call assert_equal(1, exists('?acos'))
+  call assert_equal(has('win32'), exists('*debugbreak'))
+  call assert_equal(1, exists('?debugbreak'))
+
   " Valid internal command (full match)
   call assert_equal(2, exists(':edit'))
   " Valid internal command (full match) with garbage
   call assert_equal(0, exists(':edit/a'))
   " Valid internal command (partial match)
   call assert_equal(1, exists(':q'))
+  " Valid internal command with a digit
+  call assert_equal(2, exists(':2match'))
   " Non-existing internal command
   call assert_equal(0, exists(':invalidcmd'))
+  " Internal command with a count
+  call assert_equal(0, exists(':3buffer'))
+
+  " Valid internal command (full match)
+  call assert_equal(2, exists(':k'))
+  " Non-existing internal command (':k' with arg 'e')
+  call assert_equal(0, exists(':ke'))
+  " Valid internal command (partial match)
+  call assert_equal(1, exists(':kee'))
 
   " User defined command (full match)
   command! MyCmd :echo 'My command'
@@ -319,3 +342,52 @@ endfunc
 func Test_exists_funcarg()
   call FuncArg_Tests("arg1", "arg2")
 endfunc
+
+" Test for using exists() with class and object variables and methods.
+func Test_exists_class_object()
+  let lines =<< trim END
+    vim9script
+    class A
+      var var1: number = 10
+      static var var2: number = 10
+      static def Foo()
+      enddef
+      def Bar()
+      enddef
+    endclass
+
+    assert_equal(1, exists("A"))
+    var a = A.new()
+    assert_equal(1, exists("a"))
+
+    assert_equal(1, exists("a.var1"))
+    assert_fails('exists("a.var2")', 'E1375: Class variable "var2" accessible only using class "A"')
+    assert_fails('exists("a.var3")', 'E1326: Variable "var3" not found in object "A"')
+    assert_equal(1, exists("A.var2"))
+    assert_fails('exists("A.var1")', 'E1376: Object variable "var1" accessible only using class "A" object')
+    assert_fails('exists("A.var3")', 'E1337: Class variable "var3" not found in class "A"')
+
+    assert_equal(1, exists("a.Bar"))
+    assert_fails('exists("a.Barz")', 'E1326: Variable "Barz" not found in object "A"')
+    assert_fails('exists("a.Foo")', 'E1326: Variable "Foo" not found in object "A"')
+    assert_equal(1, exists("A.Foo"))
+    assert_fails('exists("A.Bar")', 'E1337: Class variable "Bar" not found in class "A"')
+    assert_fails('exists("A.Barz")', 'E1337: Class variable "Barz" not found in class "A"')
+
+    def Baz()
+      assert_equal(1, exists("A"))
+      var aa = A.new()
+      assert_equal(1, exists("A.var2"))
+      assert_fails('exists("A.var1")', 'E1376: Object variable "var1" accessible only using class "A" object')
+      assert_fails('exists("A.var3")', 'E1337: Class variable "var3" not found in class "A"')
+
+      assert_equal(1, exists("A.Foo"))
+      assert_fails('exists("A.Bar")', 'E1337: Class variable "Bar" not found in class "A"')
+      assert_fails('exists("A.Barz")', 'E1337: Class variable "Barz" not found in class "A"')
+    enddef
+    Baz()
+  END
+  call v9.CheckSourceSuccess(lines)
+endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

@@ -2,7 +2,8 @@
 " Language:	cobol
 " Maintainer: Ankit Jain <ajatkj@yahoo.co.in>
 "     (formerly Tim Pope <vimNOSPAM@tpope.info>)
-" Last Update:	By Ankit Jain (changed maintainer) on 22.03.2019
+" Last Update:	By Ankit Jain (add gtk support) on 15.08.2020
+"		2024 Jan 14 by Vim Project (browsefilter)
 
 " Insert mode mappings: <C-T> <C-D> <Tab>
 " Normal mode mappings: < > << >> [[ ]] [] ][
@@ -37,9 +38,14 @@ if exists("loaded_matchit")
     \ '-\@<!\<\%(delete\|rewrite\|start\|write\|read\)\>\%(.*\(\%$\|\%(\n\%(\%(\s*\|.\{6\}\)[*/].*\n\)*\)\=\s*\%(invalid\s\+key\|at\s\+end\|no\s\+data\|at\s\+end-of-page\)\>\)\)\@=:\%(\<not\s\+\)\@<!\<\%(not\s\+\)\=\%(invalid\s\+key\|at\s\+end\|no\s\+data\|at\s\+end-of-page\)\>:\<end-\%(delete\|rewrite\|start\|write\|read\)\>' .s:ordot
 endif
 
-if has("gui_win32") && !exists("b:browsefilter")
-  let b:browsefilter = "COBOL Source Files (*.cbl, *.cob)\t*.cbl;*.cob;*.lib\n".
-		     \ "All Files (*.*)\t*.*\n"
+" add gtk support
+if (has("gui_win32") || has("gui_gtk")) && !exists("b:browsefilter")
+  let b:browsefilter = "COBOL Source Files (*.cbl, *.cob)\t*.cbl;*.cob;*.lib\n"
+  if has("win32")
+    let b:browsefilter .= "All Files (*.*)\t*\n"
+  else
+    let b:browsefilter .= "All Files (*)\t*\n"
+  endif
 endif
 
 let b:undo_ftplugin = "setlocal com< cms< fo< et< tw<" .

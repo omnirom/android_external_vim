@@ -3,6 +3,7 @@
 # english.nsi: English language strings for gvim NSIS installer.
 #
 # Locale ID    : 1033
+# Locale Name  : en
 # fileencoding : UTF-8
 # Author       : Guopeng Wen, Ken Takata
 
@@ -17,6 +18,18 @@ LangString ^UninstallCaption ${LANG_ENGLISH} \
         "$(^Name) Uninstall"
 
 ##############################################################################
+# License file for the license page                                       {{{1
+##############################################################################
+
+LicenseLangString page_lic_file ${LANG_ENGLISH} "..\lang\LICENSE.nsis.txt"
+
+##############################################################################
+# README.txt file, which is opened after installation                     {{{1
+##############################################################################
+
+LangString vim_readme_file ${LANG_ENGLISH} "README.txt"
+
+##############################################################################
 # MUI Configuration Strings                                               {{{1
 ##############################################################################
 
@@ -24,7 +37,7 @@ LangString ^UninstallCaption ${LANG_ENGLISH} \
 #    "Destination Folder (Must end with $\"vim$\")"
 
 LangString str_show_readme          ${LANG_ENGLISH} \
-    "Show README after installation finish"
+    "Show README after installation finished"
 
 # Install types:
 LangString str_type_typical         ${LANG_ENGLISH} \
@@ -120,11 +133,6 @@ LangString str_section_plugin_vim   ${LANG_ENGLISH} \
 LangString str_desc_plugin_vim      ${LANG_ENGLISH} \
     "Create plugin directories in Vim install directory, it is used for \
      everybody on the system."
-
-LangString str_section_vis_vim      ${LANG_ENGLISH} \
-    "VisVim Extension"
-LangString str_desc_vis_vim         ${LANG_ENGLISH} \
-    "VisVim Extension for Microsoft Visual Studio integration."
 
 LangString str_section_nls          ${LANG_ENGLISH} \
     "Native Language Support"

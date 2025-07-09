@@ -1,6 +1,7 @@
 " Menu Translations:	Danish
 " Maintainer:		scootergrisen
-" Last Change:		2018 Aug 17
+" Last Change:		2022 Nov 17
+" Original translations
 
 " Quit when menu translations have already been done.
 if exists("did_menu_trans")
@@ -35,7 +36,7 @@ menut &File	Fil
 
 menut &Open\.\.\.<Tab>:e	Åbn\.\.\.<Tab>:e
 menut Sp&lit-Open\.\.\.<Tab>:sp	Opdel-åbn\.\.\.<Tab>:sp
-menut Open\ Tab\.\.\.<Tab>:tabnew	Åbn\ faneblad\.\.\.<Tab>:tabnew
+menut Open\ &Tab\.\.\.<Tab>:tabnew	Åbn\ faneblad\.\.\.<Tab>:tabnew
 menut &New<Tab>:enew	Ny<Tab>:enew
 menut &Close<Tab>:close	Luk<Tab>:close
 " -SEP1-
@@ -43,7 +44,7 @@ menut &Save<Tab>:w	Gem<Tab>:w
 menut Save\ &As\.\.\.<Tab>:sav	Gem\ som\.\.\.<Tab>:sav
 " -SEP2-
 menut Split\ &Diff\ with\.\.\.	Opdel\ diff\ med\.\.\.
-menut Split\ Patched\ &By\.\.\.	Opdel\ patchet\ af\.\.\.
+menut Split\ Patched\ &By\.\.\.	Opdel\ patched\ af\.\.\.
 " -SEP3-
 menut &Print	Udskriv
 " -SEP4-
@@ -390,7 +391,7 @@ menut Preview<tab>p					Forhåndsvis<tab>p
 menut Edit\ File\ Hiding\ List<tab><ctrl-h>               Rediger\ liste\ til\ filskjulning
 menut Edit\ Sorting\ Sequence<tab>S					Rediger\ sorteringssekvens<tab>S
 menut Quick\ Hide/Unhide\ Dot\ Files<tab>gh					Hurtig\ skjul/vis\ punktum-filer<tab>gh
-menut Refresh\ Listing<tab><ctrl-l>							Genopfrisk\ oplistning<tab>\<c-l> ikke sikker det med \ er korrekt
+menut Refresh\ Listing<tab><ctrl-l>							Genopfrisk\ oplistning<tab>\<c-l>\ ikke\ sikker\ det\ med\ er\ korrekt
 menut Settings/Options<tab>:NetrwSettings					Indstillinger/valgmuligheder<tab>
 
 menut Delete\ File/Directory<tab>D	Slet\ fil/mappe<tab>D
@@ -406,10 +407,10 @@ menut In\ New\ Vertical\ Window<tab>v					I\ nyt\ lodret\ vindue<tab>v
 
 menut Explore					Gennemse
 menut Directory\ Name					Mappenavn<tab>:Explore
-menut Filenames\ Matching\ Pattern\ (curdir\ only)<tab>:Explore\ */					test29<tab>:Explore */
-menut Filenames\ Matching\ Pattern\ (+subdirs)<tab>:Explore\ **/					test30<tab>:Explore **/
-menut Files\ Containing\ String\ Pattern\ (curdir\ only)<tab>:Explore\ *//					test31<tab>:Explore *//
-menut Files\ Containing\ String\ Pattern\ (+subdirs)<tab>:Explore\ **//					test32<tab>:Explore **//
+menut Filenames\ Matching\ Pattern\ (curdir\ only)<tab>:Explore\ */					test29<tab>:Explore\ */
+menut Filenames\ Matching\ Pattern\ (+subdirs)<tab>:Explore\ **/					test30<tab>:Explore\ **/
+menut Files\ Containing\ String\ Pattern\ (curdir\ only)<tab>:Explore\ *//					test31<tab>:Explore\ *//
+menut Files\ Containing\ String\ Pattern\ (+subdirs)<tab>:Explore\ **//					test32<tab>:Explore\ **//
 menut Next\ Match<tab>:Nexplore					Næste\ match<tab>:Nexplore<cr>
 menut Prev\ Match<tab>:Pexplore					Forrige\ match<tab>:Pexplore<cr>
 

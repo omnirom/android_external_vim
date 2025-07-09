@@ -1,8 +1,9 @@
 " Menu Translations:	Slovenian / Slovensko
 " Maintainer:		Mojca Miklavec <mojca.miklavec.lists@gmail.com>
 " Originally By:	Mojca Miklavec <mojca.miklavec.lists@gmail.com>
-" Last Change:		2016 Oct 17
+" Last Change:		2020 Apr 23
 " vim:set foldmethod=marker tabstop=8:
+" Generated from menu_sl_si.utf-8.vim, DO NOT EDIT
 
 " TODO: add/check all '&'s
 
@@ -14,13 +15,13 @@ let did_menu_trans = 1
 let s:keepcpo= &cpo
 set cpo&vim
 
-scriptencoding latin2
+scriptencoding iso-8859-2
 
 " {{{ FILE / DATOTEKA
 menutrans &File				&Datoteka
 menutrans &Open\.\.\.<Tab>:e		&Odpri\ \.\.\.<Tab>:e
 menutrans Sp&lit-Open\.\.\.<Tab>:sp	Odpri\ de&ljeno\ \.\.\.<Tab>:sp
-menutrans Open\ Tab\.\.\.<Tab>:tabnew	Odpri\ v\ zavi&hku\ \.\.\.<Tab>:tabnew
+menutrans Open\ &Tab\.\.\.<Tab>:tabnew	Odpri\ v\ zavi&hku\ \.\.\.<Tab>:tabnew
 menutrans &New<Tab>:enew		&Nova<Tab>:enew
 menutrans &Close<Tab>:close		&Zapri<Tab>:close
 menutrans &Save<Tab>:w			&Shrani<Tab>:w
@@ -52,7 +53,7 @@ menutrans Find\ and\ Rep&lace\.\.\.	Poi¹èi\ in\ &zamenjaj\ \.\.\.
 
 " [-- SETTINGS --]
 menutrans Settings\ &Window				Nastavitve\ \.\.\.
-menutrans Startup\ &Settings				Zaèetne nastavitve
+menutrans Startup\ &Settings				Zaèetne\ nastavitve
 menutrans &Global\ Settings				&Globalne\ nastavitve
 
 menutrans Toggle\ Pattern\ &Highlight<Tab>:set\ hls!	Vkljuèi/izkljuèi\ poudarjanje\ iskanega\ niza<Tab>:set\ hls!
@@ -92,7 +93,7 @@ menutrans Toggle\ &C-indenting<Tab>:set\ cin!		Vkljuèi/izkljuèi\ C-jevski\ naèin
 
 " other options
 menutrans &Shiftwidth					©irina\ zamika\ vrstic
-menutrans Soft\ &Tabstop				©irina &tabulatorja
+menutrans Soft\ &Tabstop				©irina\ &tabulatorja
 menutrans Te&xt\ Width\.\.\.				©irina\ besedila\ \.\.\.
 menutrans &File\ Format\.\.\.				Format\ &datoteke\ \.\.\.
 menutrans C&olor\ Scheme				&Barvna\ shema\ \.\.\.

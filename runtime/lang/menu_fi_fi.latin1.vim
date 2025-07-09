@@ -1,6 +1,7 @@
 " Menu Translations:	Finnish
 " Maintainer:		Flammie Pirinen <flammie@iki.fi>
-" Last Change:		2012 May 01
+" Last Change:		2024 Dec 23
+" Original translations
 
 " Quit when menu translations have already been done.
 if exists("did_menu_trans")
@@ -21,7 +22,7 @@ menutrans &File				&Tiedosto
 " Accels: AJTUSNIDPOE
 menutrans &Open\.\.\.<Tab>:e			&Avaa\.\.\.<Tab>:e
 menutrans Sp&lit-Open\.\.\.<Tab>:sp		Avaa\ &jaettuna\.\.\.<Tab>:sp
-menutrans Open\ Tab\.\.\.<Tab>:tabnew		Avaa\ &tabissa\.\.\.<Tab>:tabnew
+menutrans Open\ &Tab\.\.\.<Tab>:tabnew		Avaa\ &tabissa\.\.\.<Tab>:tabnew
 menutrans &New<Tab>:enew			&Uusi<Tab>:enew
 menutrans &Close<Tab>:close			&Sulje<Tab>:close
 " -SEP1-
@@ -70,7 +71,7 @@ menutrans &Context\ lines				&Huomioitavat\ kontekstirivit
 " Subsubmenu:
 " Accels: ELSOA
 menutrans &Virtual\ Edit				&Virtuaalimuokkaus
-menutrans Never							&Ei koskaan
+menutrans Never							&Ei\ koskaan
 menutrans Block\ Selection					&Lohkovalinta
 menutrans Insert\ mode						&Syöttötila
 menutrans Block\ and\ Insert					L&ohkosyöttötila
@@ -87,7 +88,7 @@ menutrans Toggle\ &Left\ Scrollbar			Vasen\ &pystyvierityspalkki
 menutrans Toggle\ &Right\ Scrollbar			Oikea\ pystyvie&rityspalkki
 
 let g:menutrans_path_dialog = "Anna tiedostojen hakupolku.\nErota hakemistot pilkuin."
-let g:menutrans_tags_dialog = "Anna tägitiedostojen nimet.\nErota tidostot pilkuin."
+let g:menutrans_tags_dialog = "Anna tägitiedostojen nimet.\nErota tiedostot pilkuin."
 
 menutrans F&ile\ Settings			Tiedostoasetu&kset
 " Submenu:
@@ -95,7 +96,7 @@ menutrans F&ile\ Settings			Tiedostoasetu&kset
 menutrans Toggle\ Line\ &Numbering<Tab>:set\ nu!	Rivi&numerointi<Tab>:set\ nu!
 menutrans Toggle\ &List\ Mode<Tab>:set\ list!		&Listaustila<Tab>:set\ list!
 menutrans Toggle\ Line\ &Wrap<Tab>:set\ wrap!		&Rivitys<Tab>:set\ wrap!
-menutrans Toggle\ W&rap\ at\ word<Tab>:set\ lbr!	&Sanoittainen rivitys<Tab>:set\ lbr!
+menutrans Toggle\ W&rap\ at\ word<Tab>:set\ lbr!	&Sanoittainen\ rivitys<Tab>:set\ lbr!
 menutrans Toggle\ &expand-tab<Tab>:set\ et!		Muuta\ &tabit\ väleiksi<Tab>:set\ et!
 menutrans Toggle\ &auto-indent<Tab>:set\ ai!		&Automaattinen\ sisennys<Tab>:set\ ai!
 menutrans Toggle\ &C-indenting<Tab>:set\ cin!		&C-kielen\ sisennys<Tab>:set\ cin!
@@ -106,12 +107,12 @@ menutrans Te&xt\ Width\.\.\.				Tekstinl&eveys\.\.\.
 menutrans &File\ Format\.\.\.				Tiedosto&muoto\.\.\.
 
 let g:menutrans_textwidth_dialog = "Anna uusi tekstin leveys\n(0 poistaa käytöstä)"
-let g:menutrans_fileformat_dialog = "Anaa tiedoston kirjoitusmuoto."
+let g:menutrans_fileformat_dialog = "Anna tiedoston kirjoitusmuoto."
 let g:menutrans_fileformat_choices = " &Unix \n &Dos \n &Mac \n &Peru "
 
 menutrans C&olor\ Scheme			&Väriteema
 menutrans &Keymap				&Näppäinkartta
-menutrans None						Ei mikään
+menutrans None					Ei\ mikään
 menutrans Select\ Fo&nt\.\.\.			Valitse\ &fontti\.\.\.
 
 

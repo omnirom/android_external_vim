@@ -1,6 +1,6 @@
 " Vim plugin for converting a syntax highlighted file to HTML.
 " Maintainer: Ben Fritz <fritzophrenic@gmail.com>
-" Last Change: 2018 Nov 11
+" Last Change: 2023 Sep 07
 "
 " The core of the code is in $VIMRUNTIME/autoload/tohtml.vim and
 " $VIMRUNTIME/syntax/2html.vim
@@ -8,17 +8,78 @@
 if exists('g:loaded_2html_plugin')
   finish
 endif
-let g:loaded_2html_plugin = 'vim8.1_v1'
+let g:loaded_2html_plugin = 'vim9.0_v2'
 
 "
 " Changelog: {{{
-"   8.1_v1  (this version): Fix Bitbucket issue #6: Don't generate empty script
-"                           tag.
-"                           Fix Bitbucket issue #5: javascript should
-"                           declare variables with "var".
-"                           Fix Bitbucket issue #13: errors thrown sourcing
-"                           2html.vim directly when plugins not loaded.
-"                           Fix Bitbucket issue #16: support 'vartabstop'.
+"   9.0_v2  (this version): - Warn if using deprecated g:use_xhtml option
+"                           - Change default g:html_use_input_for_pc to "none"
+"                             instead of "fallback". All modern browsers support
+"                             the "user-select: none" and "content:" CSS
+"                             properties so the older method relying on extra
+"                             markup and unspecified browser/app clipboard
+"                             handling is only needed in rare special cases.
+"                           - Fix SourceForge issue #33: generate diff filler
+"                             correctly when new lines have been added to or
+"                             removed from end of buffer.
+"                           - Fix SourceForge issue #32/Vim Github issue #8547:
+"                             use translated highlight ID for styling the
+"                             special-use group names (e.g. LineNr) used
+"                             directly by name in the 2html processing.
+"                           - Fix SourceForge issue #26, refactoring to use
+"                             :let-heredoc style string assignment and
+"                             additional fixes for ".." vs. "." style string
+"                             concatenation. Requires Vim v8.1.1354 or higher.
+"   9.0_v1  (Vim 9.0.1275): - Implement g:html_no_doc and g:html_no_modeline
+"                             for diff mode. Add tests.
+"           (Vim 9.0.1122): NOTE: no version string update for this version!
+"                           - Bugfix for variable name in g:html_no_doc
+"           (Vim 9.0.0819): NOTE: no version string update for this version!
+"                           - Add options g:html_no_doc, g:html_no_lines,
+"                             and g:html_no_modeline (partially included in Vim
+"                             runtime prior to version string update).
+"                           - Updates for new Vim9 string append style (i.e. use
+"                             ".." instead of "."). Requires Vim version
+"                             8.1.1114 or higher.
+"
+"   8.1 updates: {{{
+"   8.1_v2  (Vim 8.1.2312): - Fix SourceForge issue #19: fix calculation of tab
+"                             stop position to use in expanding a tab, when that
+"                             tab occurs after a syntax match which in turn
+"                             comes after previously expanded tabs.
+"                           - Set eventignore while splitting a window for the
+"                             destination file to ignore FileType events;
+"                             speeds up processing when the destination file
+"                             already exists and HTML highlight takes too long.
+"                           - Fix SourceForge issue #20: progress bar could not be
+"                             seen when DiffDelete background color matched
+"                             StatusLine background color. Added TOhtmlProgress
+"                             highlight group for manual user override, but
+"                             calculate it to be visible compared to StatusLine
+"                             by default.
+"                           - Fix SourceForge issue #1: Remove workaround for old
+"                             browsers which don't support 'ch' CSS unit, since
+"                             all modern browsers, including IE>=9, support it.
+"                           - Fix SourceForge issue #10: support termguicolors
+"                           - Fix SourceForge issue #21: default to using
+"                             generated content instead of <input> tags for
+"                             uncopyable text, so that text is correctly
+"                             prevented from being copied in chrome. Use
+"                             g:html_use_input_for_pc option to control the
+"                             method used.
+"                           - Switch to HTML5 to allow using vnu as a validator
+"                             in unit test.
+"                           - Fix fallback sizing of <input> tags for browsers
+"                             without "ch" support.
+"                           - Fix cursor on unselectable diff filler text.
+"   8.1_v1  (Vim 8.1.0528): - Fix SourceForge issue #6: Don't generate empty
+"                             script tag.
+"                           - Fix SourceForge issue #5: javascript should
+"                             declare variables with "var".
+"                           - Fix SourceForge issue #13: errors thrown sourcing
+"                             2html.vim directly when plugins not loaded.
+"                           - Fix SourceForge issue #16: support 'vartabstop'.
+"}}}
 "
 "   7.4 updates: {{{
 "   7.4_v2  (Vim 7.4.0899): Fix error raised when converting a diff containing
@@ -33,7 +94,7 @@ let g:loaded_2html_plugin = 'vim8.1_v1'
 "   7.3_v14 (Vim 7.3.1246): Allow suppressing line number anchors using
 "			    g:html_line_ids=0. Allow customizing
 "			    important IDs (like line IDs and fold IDs) using
-"			    g:html_id_expr evalutated when the buffer conversion
+"			    g:html_id_expr evaluated when the buffer conversion
 "			    is started.
 "   7.3_v13 (Vim 7.3.1088): Keep foldmethod at manual in the generated file and
 "			    insert modeline to set it to manual.
@@ -123,7 +184,7 @@ let g:loaded_2html_plugin = 'vim8.1_v1'
 
 " TODO: {{{
 "   * Check the issue tracker:
-"     https://bitbucket.org/fritzophrenic/vim-tohtml/issues?status=new&status=open
+"     https://sourceforge.net/p/vim-tohtml/issues/search/?q=%21status%3Aclosed
 "   * Options for generating the CSS in external style sheets. New :TOcss
 "     command to convert the current color scheme into a (mostly) generic CSS
 "     stylesheet which can be re-used. Alternate stylesheet support? Good start

@@ -1,79 +1,94 @@
 " Tests for 'balloonevalterm'.
-
-if !has('balloon_eval_term')
-  throw 'Skipped: balloon_eval_term feature missing'
-endif
-
 " A few tests only work in the terminal.
-if !has('gui_running')
 
-source screendump.vim
-if !CanRunVimInTerminal()
-  throw 'Skipped: cannot make screendumps'
-endif
+CheckNotGui
+CheckFeature balloon_eval_term
 
-let s:common_script =<< [CODE]
+source util/screendump.vim
+
+let s:common_script =<< trim [CODE]
   call setline(1, ["one one one", "two tXo two", "three three three"])
-  set balloonevalterm balloonexpr=MyBalloonExpr() balloondelay=100
+  set balloonevalterm balloonexpr=MyBalloonExpr()..s:trailing balloondelay=100
+  let s:trailing = '<'  " check that script context is set
   func MyBalloonExpr()
-    return "line " .. v:beval_lnum .. " column " .. v:beval_col .. ": " .. v:beval_text
+    return "line " .. v:beval_lnum .. " column " .. v:beval_col .. ":\n" .. v:beval_text
   endfun
   redraw
 [CODE]
 
 func Test_balloon_eval_term()
+  CheckScreendump
   " Use <Ignore> after <MouseMove> to return from vgetc() without removing
   " the balloon.
-  call writefile(s:common_script + [
-	\ 'call test_setmouse(2, 6)',
-	\ 'call feedkeys("\<MouseMove>\<Ignore>", "xt")',
-	\ ], 'XTest_beval')
+  let xtra_lines =<< trim [CODE]
+    set updatetime=300
+    au CursorHold * echo 'hold fired'
+    func Trigger()
+      call test_setmouse(2, 6)
+      call feedkeys("\<MouseMove>\<Ignore>", "xt")
+    endfunc
+  [CODE]
+  call writefile(s:common_script + xtra_lines, 'XTest_beval', 'D')
 
   " Check that the balloon shows up after a mouse move
   let buf = RunVimInTerminal('-S XTest_beval', {'rows': 10, 'cols': 50})
-  call term_wait(buf, 100)
+  call TermWait(buf, 50)
+  call term_sendkeys(buf, 'll')
+  call term_sendkeys(buf, ":call Trigger()\<CR>")
+  sleep 150m " Wait for balloon to show up (100ms balloondelay time)
   call VerifyScreenDump(buf, 'Test_balloon_eval_term_01', {})
+
+  " Make sure the balloon still shows after 'updatetime' passed and CursorHold
+  " was triggered.
+  call TermWait(buf, 150)
+  call VerifyScreenDump(buf, 'Test_balloon_eval_term_01a', {})
 
   " clean up
   call StopVimInTerminal(buf)
-  call delete('XTest_beval')
 endfunc
 
 func Test_balloon_eval_term_visual()
+  CheckScreendump
   " Use <Ignore> after <MouseMove> to return from vgetc() without removing
   " the balloon.
   call writefile(s:common_script + [
 	\ 'call test_setmouse(3, 6)',
 	\ 'call feedkeys("3Gevfr\<MouseMove>\<Ignore>", "xt")',
-	\ ], 'XTest_beval_visual')
+	\ ], 'XTest_beval_visual', 'D')
 
   " Check that the balloon shows up after a mouse move
   let buf = RunVimInTerminal('-S XTest_beval_visual', {'rows': 10, 'cols': 50})
-  call term_wait(buf, 100)
+  call TermWait(buf, 50)
   call VerifyScreenDump(buf, 'Test_balloon_eval_term_02', {})
 
   " clean up
   call StopVimInTerminal(buf)
-  call delete('XTest_beval_visual')
 endfunc
 
-endif
+func Test_balloon_eval_term_rightleft()
+  CheckScreendump
+  CheckFeature rightleft
 
-" Tests that only work in the GUI
-if has('gui_running')
+  " Use <Ignore> after <MouseMove> to return from vgetc() without removing
+  " the balloon.
+  let xtra_lines =<< trim [CODE]
+    set rightleft
+    func Trigger()
+      call test_setmouse(2, 50 + 1 - 6)
+      call feedkeys("\<MouseMove>\<Ignore>", "xt")
+    endfunc
+  [CODE]
+  call writefile(s:common_script + xtra_lines, 'XTest_beval_rl', 'D')
 
-func Test_balloon_show_gui()
-  let msg = 'this this this this'
-  call balloon_show(msg)
-  call assert_equal(msg, balloon_gettext())
-  sleep 10m
-  call balloon_show('')
+  " Check that the balloon shows up after a mouse move
+  let buf = RunVimInTerminal('-S XTest_beval_rl', {'rows': 10, 'cols': 50})
+  call TermWait(buf, 50)
+  call term_sendkeys(buf, 'll')
+  call term_sendkeys(buf, ":call Trigger()\<CR>")
+  call VerifyScreenDump(buf, 'Test_balloon_eval_term_03', {})
 
-  let msg = 'that that'
-  call balloon_show(msg)
-  call assert_equal(msg, balloon_gettext())
-  sleep 10m
-  call balloon_show('')
+  " clean up
+  call StopVimInTerminal(buf)
 endfunc
 
-endif
+" vim: shiftwidth=2 sts=2 expandtab

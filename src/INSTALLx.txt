@@ -73,14 +73,14 @@ vi_cv_path_python_conf:
 	"/usr/lib/pythonX.Y/config" (the directory contains a file
 	"config.c").
 
-vi_cv_var_python_epfx:
+vi_cv_path_python_epfx:
 	If Python support is enabled, set this variable to the execution
 	prefix of your Python interpreter (that is, where it thinks it is
 	running).
 	This is the output of the following Python script:
 		import sys; print sys.exec_prefix
 
-vi_cv_var_python_pfx:
+vi_cv_path_python_pfx:
 	If Python support is enabled, set this variable to the prefix of your
 	Python interpreter (that is, where it was installed).
 	This is the output of the following Python script:
@@ -93,7 +93,7 @@ vi_cv_var_python_version:
 		import sys; print sys.version[:3]
 
 vim_cv_bcopy_handles_overlap:
-	Whether the "memmove" C library call is able to copy overlapping
+	Whether the "bcopy" C library call is able to copy overlapping
 	memory regions. Set to "yes" if it does or "no" if it does not.
 	You only need to set this if vim_cv_memmove_handles_overlap is set
 	to "no".
@@ -131,14 +131,6 @@ vim_cv_toupper_broken:
 	Whether the "toupper" C library function works correctly. Set to "yes"
 	if you know it's broken, otherwise set to "no".
 
-vim_cv_tty_group:
-	The default group of pseudo terminals. Either set to the numeric value
-	of your tty group or to "world" if they are world accessible.
-
-vim_cv_tty_mode:
-	The default mode of pseudo terminals if they are not world accessible.
-	Most probably the value "0620".
-
 
 4. EXAMPLE:
 ===========
@@ -153,7 +145,6 @@ vim_cv_stat_ignores_slash=yes \
 vim_cv_tgetent=zero \
 vim_cv_terminfo=yes \
 vim_cv_toupper_broken=no \
-vim_cv_tty_group=world \
 ./configure \
 	--build=i586-linux \
 	--host=armeb-xscale-linux-gnu \

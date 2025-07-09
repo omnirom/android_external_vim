@@ -23,10 +23,10 @@
  * problem since this code was originally created in Europe and India.
  */
 
-/* Need a type that should be 32 bits. 64 also works but wastes space. */
-typedef unsigned int u32_T;	/* int is at least 32 bits */
+// Need a type that should be 32 bits. 64 also works but wastes space.
+typedef unsigned int u32_T;	// int is at least 32 bits
 
-/* The state of encryption, referenced by cryptstate_T. */
+// The state of encryption, referenced by cryptstate_T.
 typedef struct {
     u32_T keys[3];
 } zip_state_T;
@@ -60,7 +60,8 @@ make_crc_tab(void)
 /*
  * Return the next byte in the pseudo-random sequence.
  */
-#define DECRYPT_BYTE_ZIP(keys, t) { \
+#define DECRYPT_BYTE_ZIP(keys, t) \
+{ \
     short_u temp = (short_u)keys[2] | 2; \
     t = (int)(((unsigned)(temp * (temp ^ 1U)) >> 8) & 0xff); \
 }
@@ -82,10 +83,7 @@ make_crc_tab(void)
 crypt_zip_init(
     cryptstate_T    *state,
     char_u	    *key,
-    char_u	    *salt UNUSED,
-    int		    salt_len UNUSED,
-    char_u	    *seed UNUSED,
-    int		    seed_len UNUSED)
+    crypt_arg_T     *arg UNUSED)
 {
     char_u	*p;
     zip_state_T	*zs;
@@ -114,7 +112,8 @@ crypt_zip_encode(
     cryptstate_T *state,
     char_u	*from,
     size_t	len,
-    char_u	*to)
+    char_u	*to,
+    int		last UNUSED)
 {
     zip_state_T *zs = state->method_state;
     size_t	i;
@@ -137,7 +136,8 @@ crypt_zip_decode(
     cryptstate_T *state,
     char_u	*from,
     size_t	len,
-    char_u	*to)
+    char_u	*to,
+    int		last UNUSED)
 {
     zip_state_T *zs = state->method_state;
     size_t	i;
@@ -151,4 +151,4 @@ crypt_zip_decode(
     }
 }
 
-#endif /* FEAT_CRYPT */
+#endif // FEAT_CRYPT

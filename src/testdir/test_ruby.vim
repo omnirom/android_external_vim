@@ -1,8 +1,6 @@
 " Tests for ruby interface
 
-if !has('ruby')
-  finish
-end
+CheckFeature ruby
 
 func Test_ruby_change_buffer()
   call setline(line('$'), ['1 line 1'])
@@ -12,10 +10,25 @@ func Test_ruby_change_buffer()
 endfunc
 
 func Test_rubydo()
-  " Check deleting lines does not trigger ml_get error.
   new
+
+  " Check deleting lines does not trigger ml_get error.
   call setline(1, ['one', 'two', 'three'])
   rubydo Vim.command("%d_")
+  call assert_equal(['one'], getline(1, '$'))
+
+  call setline(1, ['one', 'two', 'three'])
+  rubydo Vim.command("1,2d_")
+  call assert_equal(['one'], getline(1, '$'))
+
+  call setline(1, ['one', 'two', 'three'])
+  rubydo Vim.command("2,3d_"); $_ = "REPLACED"
+  call assert_equal(['REPLACED'], getline(1, '$'))
+
+  call setline(1, ['one', 'two', 'three'])
+  2,3rubydo Vim.command("1,2d_"); $_ = "REPLACED"
+  call assert_equal(['three'], getline(1, '$'))
+
   bwipe!
 
   " Check switching to another buffer does not trigger ml_get error.
@@ -27,6 +40,18 @@ func Test_rubydo()
   %bwipe!
 endfunc
 
+func Test_rubydo_dollar_underscore()
+  new
+  call setline(1, ['one', 'two', 'three', 'four'])
+  2,3rubydo $_ = '[' + $_  + ']'
+  call assert_equal(['one', '[two]', '[three]', 'four'], getline(1, '$'))
+  bwipe!
+
+  call assert_fails('rubydo $_ = 0', 'E265:')
+  call assert_fails('rubydo (')
+  bwipe!
+endfunc
+
 func Test_rubyfile()
   " Check :rubyfile does not SEGV with Ruby level exception but just fails
   let tempfile = tempname() . '.rb'
@@ -35,7 +60,7 @@ func Test_rubyfile()
   call delete(tempfile)
 endfunc
 
-func Test_set_cursor()
+func Test_ruby_set_cursor()
   " Check that setting the cursor position works.
   new
   call setline(1, ['first line', 'second line'])
@@ -47,7 +72,7 @@ func Test_set_cursor()
   " Check that movement after setting cursor position keeps current column.
   normal j
   call assert_equal([2, 6], [line('.'), col('.')])
-  call assert_equal([2, 5], rubyeval('$curwin.cursor'))
+  call assert_equal([2, 5], '$curwin.cursor'->rubyeval())
 
   call assert_fails('ruby $curwin.cursor = [1]',
         \           'ArgumentError: array length must be 2')
@@ -55,7 +80,7 @@ func Test_set_cursor()
 endfunc
 
 " Test buffer.count and buffer.length (number of lines in buffer)
-func Test_buffer_count()
+func Test_ruby_buffer_count()
   new
   call setline(1, ['one', 'two', 'three'])
   call assert_equal(3, rubyeval('$curbuf.count'))
@@ -64,7 +89,7 @@ func Test_buffer_count()
 endfunc
 
 " Test buffer.name (buffer name)
-func Test_buffer_name()
+func Test_ruby_buffer_name()
   new Xfoo
   call assert_equal(expand('%:p'), rubyeval('$curbuf.name'))
   bwipe
@@ -72,7 +97,7 @@ func Test_buffer_name()
 endfunc
 
 " Test buffer.number (number of the buffer).
-func Test_buffer_number()
+func Test_ruby_buffer_number()
   new
   call assert_equal(bufnr('%'), rubyeval('$curbuf.number'))
   new
@@ -82,7 +107,7 @@ func Test_buffer_number()
 endfunc
 
 " Test buffer.delete({n}) (delete line {n})
-func Test_buffer_delete()
+func Test_ruby_buffer_delete()
   new
   call setline(1, ['one', 'two', 'three'])
   ruby $curbuf.delete(2)
@@ -95,7 +120,7 @@ func Test_buffer_delete()
 endfunc
 
 " Test buffer.append({str}, str) (append line {str} after line {n})
-func Test_buffer_append()
+func Test_ruby_buffer_append()
   new
   ruby $curbuf.append(0, 'one')
   ruby $curbuf.append(1, 'three')
@@ -113,7 +138,7 @@ func Test_buffer_append()
 endfunc
 
 " Test buffer.line (get or set the current line)
-func Test_buffer_line()
+func Test_ruby_buffer_line()
   new
   call setline(1, ['one', 'two', 'three'])
   2
@@ -126,7 +151,7 @@ func Test_buffer_line()
 endfunc
 
 " Test buffer.line_number (get current line number)
-func Test_buffer_line_number()
+func Test_ruby_buffer_line_number()
   new
   call setline(1, ['one', 'two', 'three'])
   2
@@ -135,7 +160,7 @@ func Test_buffer_line_number()
   bwipe!
 endfunc
 
-func Test_buffer_get()
+func Test_ruby_buffer_get()
   new
   call setline(1, ['one', 'two'])
   call assert_equal('one', rubyeval('$curbuf[1]'))
@@ -149,7 +174,7 @@ func Test_buffer_get()
   bwipe!
 endfunc
 
-func Test_buffer_set()
+func Test_ruby_buffer_set()
   new
   call setline(1, ['one', 'two'])
   ruby $curbuf[2] = 'TWO'
@@ -163,7 +188,7 @@ func Test_buffer_set()
 endfunc
 
 " Test window.width (get or set window height).
-func Test_window_height()
+func Test_ruby_window_height()
   new
 
   " Test setting window height
@@ -177,7 +202,7 @@ func Test_window_height()
 endfunc
 
 " Test window.width (get or set window width).
-func Test_window_width()
+func Test_ruby_window_width()
   vnew
 
   " Test setting window width
@@ -191,7 +216,7 @@ func Test_window_width()
 endfunc
 
 " Test window.buffer (get buffer object of a window object).
-func Test_window_buffer()
+func Test_ruby_window_buffer()
   new Xfoo1
   new Xfoo2
   ruby $b2 = $curwin.buffer
@@ -210,14 +235,14 @@ func Test_window_buffer()
 endfunc
 
 " Test Vim::Window.current (get current window object)
-func Test_Vim_window_current()
+func Test_ruby_Vim_window_current()
   let cw = rubyeval('$curwin')
   call assert_equal(cw, rubyeval('Vim::Window.current'))
   call assert_match('^#<Vim::Window:0x\x\+>$', cw)
 endfunc
 
 " Test Vim::Window.count (number of windows)
-func Test_Vim_window_count()
+func Test_ruby_Vim_window_count()
   new Xfoo1
   new Xfoo2
   split
@@ -227,7 +252,7 @@ func Test_Vim_window_count()
 endfunc
 
 " Test Vim::Window[n] (get window object of window n)
-func Test_Vim_window_get()
+func Test_ruby_Vim_window_get()
   new Xfoo1
   new Xfoo2
   call assert_match('Xfoo2$', rubyeval('Vim::Window[0].buffer.name'))
@@ -239,14 +264,14 @@ func Test_Vim_window_get()
 endfunc
 
 " Test Vim::Buffer.current (return the buffer object of current buffer)
-func Test_Vim_buffer_current()
+func Test_ruby_Vim_buffer_current()
   let cb = rubyeval('$curbuf')
   call assert_equal(cb, rubyeval('Vim::Buffer.current'))
   call assert_match('^#<Vim::Buffer:0x\x\+>$', cb)
 endfunc
 
 " Test Vim::Buffer:.count (return the number of buffers)
-func Test_Vim_buffer_count()
+func Test_ruby_Vim_buffer_count()
   new Xfoo1
   new Xfoo2
   call assert_equal(3, rubyeval('Vim::Buffer.count'))
@@ -255,7 +280,7 @@ func Test_Vim_buffer_count()
 endfunc
 
 " Test Vim::buffer[n] (return the buffer object of buffer number n)
-func Test_Vim_buffer_get()
+func Test_ruby_Vim_buffer_get()
   new Xfoo1
   new Xfoo2
 
@@ -264,13 +289,13 @@ func Test_Vim_buffer_get()
   call assert_match('Xfoo1$', rubyeval('Vim::Buffer[1].name'))
   call assert_match('Xfoo2$', rubyeval('Vim::Buffer[2].name'))
   call assert_fails('ruby print Vim::Buffer[3].name',
-        \           "NoMethodError: undefined method `name' for nil:NilClass")
+        \           "NoMethodError")
   %bwipe
 endfunc
 
 " Test Vim::command({cmd}) (execute a Ex command))
 " Test Vim::command({cmd})
-func Test_Vim_command()
+func Test_ruby_Vim_command()
   new
   call setline(1, ['one', 'two', 'three', 'four'])
   ruby Vim::command('2,3d')
@@ -279,7 +304,7 @@ func Test_Vim_command()
 endfunc
 
 " Test Vim::set_option (set a vim option)
-func Test_Vim_set_option()
+func Test_ruby_Vim_set_option()
   call assert_equal(0, &number)
   ruby Vim::set_option('number')
   call assert_equal(1, &number)
@@ -287,7 +312,7 @@ func Test_Vim_set_option()
   call assert_equal(0, &number)
 endfunc
 
-func Test_Vim_evaluate()
+func Test_ruby_Vim_evaluate()
   call assert_equal(123,        rubyeval('Vim::evaluate("123")'))
   " Vim::evaluate("123").class gives Integer or Fixnum depending
   " on versions of Ruby.
@@ -320,43 +345,43 @@ func Test_Vim_evaluate()
   call assert_equal('FalseClass',rubyeval('Vim::evaluate("v:false").class'))
 endfunc
 
-func Test_Vim_blob()
+func Test_ruby_Vim_blob()
   call assert_equal('0z',         rubyeval('Vim::blob("")'))
   call assert_equal('0z31326162', rubyeval('Vim::blob("12ab")'))
   call assert_equal('0z00010203', rubyeval('Vim::blob("\x00\x01\x02\x03")'))
   call assert_equal('0z8081FEFF', rubyeval('Vim::blob("\x80\x81\xfe\xff")'))
 endfunc
 
-func Test_Vim_evaluate_list()
+func Test_ruby_Vim_evaluate_list()
   call setline(line('$'), ['2 line 2'])
   ruby Vim.command("normal /^2\n")
   let l = ["abc", "def"]
-  ruby << EOF
-  curline = $curbuf.line_number
-  l = Vim.evaluate("l");
-  $curbuf.append(curline, l.join("\n"))
-EOF
+  ruby << trim EOF
+    curline = $curbuf.line_number
+    l = Vim.evaluate("l");
+    $curbuf.append(curline, l.join("\n"))
+  EOF
   normal j
   .rubydo $_ = $_.gsub(/\n/, '/')
   call assert_equal('abc/def', getline('$'))
 endfunc
 
-func Test_Vim_evaluate_dict()
+func Test_ruby_Vim_evaluate_dict()
   let d = {'a': 'foo', 'b': 123}
   redir => l:out
   ruby d = Vim.evaluate("d"); print d
   redir END
-  call assert_equal(['{"a"=>"foo", "b"=>123}'], split(l:out, "\n"))
+  call assert_equal(['{"a"=>"foo","b"=>123}'], split(substitute(l:out, '\s', '', 'g'), "\n"))
 endfunc
 
 " Test Vim::message({msg}) (display message {msg})
-func Test_Vim_message()
+func Test_ruby_Vim_message()
   ruby Vim::message('A message')
   let messages = split(execute('message'), "\n")
   call assert_equal('A message', messages[-1])
 endfunc
 
-func Test_print()
+func Test_ruby_print()
   func RubyPrint(expr)
     return trim(execute('ruby print ' . a:expr))
   endfunc
@@ -365,7 +390,7 @@ func Test_print()
   call assert_equal('1.23', RubyPrint('1.23'))
   call assert_equal('Hello World!', RubyPrint('"Hello World!"'))
   call assert_equal('[1, 2]', RubyPrint('[1, 2]'))
-  call assert_equal('{"k1"=>"v1", "k2"=>"v2"}', RubyPrint('({"k1" => "v1", "k2" => "v2"})'))
+  call assert_equal('{"k1"=>"v1","k2"=>"v2"}', substitute(RubyPrint('({"k1" => "v1", "k2" => "v2"})'), '\s', '', 'g'))
   call assert_equal('true', RubyPrint('true'))
   call assert_equal('false', RubyPrint('false'))
   call assert_equal('', RubyPrint('nil'))
@@ -375,9 +400,9 @@ func Test_print()
   delfunc RubyPrint
 endfunc
 
-func Test_p()
+func Test_ruby_p()
   ruby p 'Just a test'
-  let messages = split(execute('message'), "\n")
+  let messages = GetMessages()
   call assert_equal('"Just a test"', messages[-1])
 
   " Check return values of p method
@@ -390,6 +415,40 @@ func Test_p()
   messages clear
   call assert_equal(v:true, rubyeval('p() == nil'))
 
-  let messages = split(execute('message'), "\n")
+  let messages = GetMessages()
   call assert_equal(0, len(messages))
 endfunc
+
+func Test_rubyeval_error()
+  " On Linux or Windows the error matches:
+  "   "syntax error, unexpected end-of-input"
+  " whereas on macOS in CI, the error message makes less sense:
+  "   "SyntaxError: array length must be 2"
+  " Unclear why. The test does not check the error message.
+  call assert_fails('call rubyeval("(")')
+endfunc
+
+" Test for various heredoc syntax
+func Test_ruby_heredoc()
+  ruby << END
+Vim.command('let s = "A"')
+END
+  ruby <<
+Vim.command('let s ..= "B"')
+.
+  ruby << trim END
+    Vim.command('let s ..= "C"')
+  END
+  ruby << trim
+    Vim.command('let s ..= "D"')
+  .
+  ruby << trim eof
+    Vim.command('let s ..= "E"')
+  eof
+ruby << trimm
+Vim.command('let s ..= "F"')
+trimm
+  call assert_equal('ABCDEF', s)
+endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

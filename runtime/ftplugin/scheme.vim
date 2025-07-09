@@ -1,10 +1,12 @@
 " Vim filetype plugin file
-" Language: Scheme (R7RS)
-" Last Change: 2018-03-05
-" Author: Evan Hanson <evhan@foldling.org>
-" Maintainer: Evan Hanson <evhan@foldling.org>
+" Language:            Scheme (R7RS)
+" Last Change:         2024 Jun 21
+"                      2024 May 23 by Riley Bruins <ribru17@gmail.com> ('commentstring')
+" Author:              Evan Hanson <evhan@foldling.org>
+" Maintainer:          Evan Hanson <evhan@foldling.org>
 " Previous Maintainer: Sergey Khorev <sergey.khorev@gmail.com>
-" URL: https://foldling.org/vim/ftplugin/scheme.vim
+" Repository:          https://git.foldling.org/vim-scheme.git
+" URL:                 https://foldling.org/vim/ftplugin/scheme.vim
 
 if exists('b:did_ftplugin')
   finish
@@ -15,14 +17,16 @@ set cpo&vim
 
 setl lisp
 setl comments=:;;;;,:;;;,:;;,:;,sr:#\|,mb:\|,ex:\|#
-setl commentstring=;%s
+setl commentstring=;\ %s
 setl define=^\\s*(def\\k*
 setl iskeyword=33,35-39,42-43,45-58,60-90,94,95,97-122,126
+setl formatoptions-=t
 
-let b:undo_ftplugin = 'setl lisp< comments< commentstring< define< iskeyword<'
+let b:undo_ftplugin = 'setl lisp< comments< commentstring< define< iskeyword< formatoptions<'
 
-setl lispwords=case
+setl lispwords+=case
 setl lispwords+=define
+setl lispwords+=define-library
 setl lispwords+=define-record-type
 setl lispwords+=define-syntax
 setl lispwords+=define-values
@@ -48,7 +52,7 @@ let b:undo_ftplugin = b:undo_ftplugin . ' lispwords<'
 let b:did_scheme_ftplugin = 1
 
 if exists('b:is_chicken') || exists('g:is_chicken')
-  exe 'ru! ftplugin/chicken.vim'
+  runtime! ftplugin/chicken.vim
 endif
 
 unlet b:did_scheme_ftplugin
